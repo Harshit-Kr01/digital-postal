@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DigitalPostal.Api/DigitalPostal.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DigitalPostal.Api.IntegrationTests/DigitalPostal.Api.IntegrationTests.csproj" />
+    <Project Path="tests/DigitalPostal.Api.UnitTests/DigitalPostal.Api.UnitTests.csproj" />
+  </Folder>
+</Solution>

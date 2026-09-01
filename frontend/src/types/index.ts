@@ -1,31 +1,44 @@
-// ==========================
-// Locations
-// ==========================
+// ==========================================
+// 1. Locations & Parties (Public Profiles)
+// ==========================================
+
 export interface PostalLocation {
   id: string;
   city: string;
+  region?: string;
   country: string;
-  latitude: number;
-  longitude: number;
-  timeZone: string;
-  isActive: boolean;
+  countryCode: string;
+  latitude?: number;
+  longitude?: number;
+  timeZone?: string;
 }
 
-// ==========================
-// Users & Auth
-// ==========================
+export interface Party {
+  id: string;
+  username: string;
+  displayName: string;
+}
+
+// ==========================================
+// 2. User & Auth Contracts
+// ==========================================
+
 export interface User {
   id: string;
   username: string;
+  displayName: string;
   email: string;
-  postalLocationId?: string;
-  postalLocation?: PostalLocation;
-  createdAtUtc: string;
+  locationId?: string;
+  location?: PostalLocation;
+  createdAtUtc?: string;
 }
 
-export interface AuthResponse {
-  token: string;
-  user: User;
+export interface RegisterRequest {
+  username: string;
+  displayName: string;
+  email: string;
+  password: string;
+  locationId: string;
 }
 
 export interface LoginRequest {
@@ -33,113 +46,97 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface RegisterRequest {
-  username: string;
-  email: string;
-  password: string;
-  postalLocationId: string;
+export interface AuthResponse {
+  token: string;
+  user: User;
 }
 
-// ==========================
-// Letters & Delivery
-// ==========================
-export type LetterStatus = 
-  | 'DRAFT'
-  | 'IN_TRANSIT'
-  | 'DELIVERED'
-  | 'RETURNED'
-  | 'FAILED';
-
-export type LetterEventType =
-  | 'DISPATCHED'
-  | 'IN_TRANSIT'
-  | 'ARRIVED_AT_POSTAL_HUB'
-  | 'DEPARTED_POSTAL_HUB'
-  | 'ARRIVED_AT_DESTINATION'
-  | 'DELIVERED'
-  | 'RETURNED';
-
-export interface Stamp {
+export interface RecipientSearchResult {
   id: string;
-  locationId?: string;
-  code: string;
-  name: string;
-  imageUrl: string;
-  description?: string;
-  version?: number;
-  isActive: boolean;
+  username: string;
+  displayName: string;
 }
+
+// ==========================================
+// 3. Letters, Stamps & Postal Journey
+// ==========================================
+
+export type LetterStatus = 'IN_TRANSIT' | 'DELIVERED' | 'RETURNED';
 
 export interface LetterStamp {
-  id: string;
-  letterId: string;
-  stampId: string;
-  stamp: Stamp;
-  letterEventId?: string;
+  id?: string;
+  name: string;
+  imageUrl: string;
   appliedAtUtc: string;
 }
 
-export interface LetterEvent {
-  id: string;
-  letterId: string;
-  eventType: LetterEventType;
-  locationId?: string;
-  location?: PostalLocation;
+export interface JourneyEvent {
+  id?: string;
+  type: string;
   occurredAtUtc: string;
+  displayLabel: string;
 }
 
-// In-Transit / Mailbox Preview Letter (Sender & Content hidden if still in transit!)
-export interface IncomingLetterSummary {
+export interface IncomingInTransitLetter {
   id: string;
-  status: LetterStatus;
+  status: 'IN_TRANSIT';
+  estimatedDeliveryAtUtc: string;
+  displayEstimate: string;
+}
+
+export interface DeliveredIncomingLetter {
+  id: string;
+  status: 'DELIVERED';
+  sender: Party;
+  content: string;
+  origin: PostalLocation;
+  destination: PostalLocation;
   sentAtUtc: string;
   estimatedDeliveryAtUtc: string;
-  isDelivered: boolean;
-  // Available only after delivery:
-  senderUsername?: string;
-  originLocation?: PostalLocation;
+  deliveredAtUtc: string;
+  stamps: LetterStamp[];
+  journey?: JourneyEvent[];
 }
 
-// Full Letter (Available once delivered or for sender in Sent box)
-export interface LetterDetail {
+
+export type IncomingLetter = IncomingInTransitLetter | DeliveredIncomingLetter;
+
+export interface SentLetter {
   id: string;
-  senderId: string;
-  senderUsername: string;
-  recipientId: string;
-  recipientUsername: string;
-  originLocation: PostalLocation;
-  destinationLocation: PostalLocation;
-  content: string;
   status: LetterStatus;
+  recipient: Party;
+  content: string;
+  destination: PostalLocation;
   sentAtUtc: string;
   estimatedDeliveryAtUtc: string;
   deliveredAtUtc?: string;
-  events: LetterEvent[];
   stamps: LetterStamp[];
+  journey?: JourneyEvent[];
 }
 
 export interface SendLetterRequest {
-  recipientUsername: string;
+  recipientId: string;
   content: string;
-  stampIds?: string[];
 }
 
-export interface DeliveryEstimateResponse {
-  distanceKm: number;
-  estimatedHours: number;
-  estimatedDeliveryAtUtc: string;
-}
+// ==========================================
+// 4. Notifications & API Errors
+// ==========================================
 
-// ==========================
-// Notifications
-// ==========================
-export interface Notification {
+export interface AppNotification {
   id: string;
   userId: string;
   letterId?: string;
-  type: string;
   title: string;
   body: string;
   readAtUtc?: string;
   createdAtUtc: string;
+}
+
+export interface ApiProblemDetails {
+  title: string;
+  status: number;
+  detail?: string;
+  code?: string;
+  errors?: Record<string, string[]>;
 }

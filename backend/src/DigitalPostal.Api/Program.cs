@@ -1,3 +1,4 @@
+using DigitalPostal.Api.Features.Locations;
 using DigitalPostal.Api.Infrastructure.Persistence;
 using DigitalPostal.Api.Infrastructure.Persistence.Seed;
 using Microsoft.EntityFrameworkCore;
@@ -66,5 +67,6 @@ app.MapHealthChecks("/health");
 
 // 6. Base API v1 Group (Ready for feature endpoints)
 var apiV1 = app.MapGroup("/api/v1");
+apiV1.MapLocationEndpoints();
 
 app.Run();

@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace DigitalPostal.Api.Features.Locations;
 
 public static class LocationEndpoints
-   {
+{
     public static RouteGroupBuilder MapLocationEndpoints(this RouteGroupBuilder group)
     {
         var locations = group.MapGroup("/locations")

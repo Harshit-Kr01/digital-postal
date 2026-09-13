@@ -5,12 +5,21 @@ using DigitalPostal.Api.Features.Users;
 using DigitalPostal.Api.Infrastructure.Identity;
 using DigitalPostal.Api.Infrastructure.Persistence;
 using DigitalPostal.Api.Infrastructure.Persistence.Seed;
+using DigitalPostal.Api.Features.Letters;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var deliveryOptions = builder.Configuration
+        .GetSection("Delivery")
+        .Get<DeliveryTimeCalculatorOptions>() ?? new
+  DeliveryTimeCalculatorOptions();
+
+builder.Services.AddSingleton(deliveryOptions);
+builder.Services.AddSingleton<IDeliveryTimeCalculator,  DeliveryTimeCalculator>();
 
 // 1. Add DbContext
 var connectionString = builder.Configuration.GetConnectionString("Postgres")
@@ -134,5 +143,6 @@ var apiV1 = app.MapGroup("/api/v1");
 apiV1.MapLocationEndpoints();
 apiV1.MapAuthEndpoints();
 apiV1.MapUserEndpoints();
+apiV1.MapLetterEndpoints();
 
 app.Run();

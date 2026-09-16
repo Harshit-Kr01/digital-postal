@@ -14,6 +14,7 @@ import StampPreview from "@/components/StampPreview";
 import { useAuth } from "@/context/AuthContext";
 import apiClient, { getErrorMessage } from "@/lib/api";
 import { RecipientSearchResult, SendLetterResponse } from "@/types";
+import { distanceBetweenLocations } from "@/lib/distance";
 
 export default function ComposePage() {
   const { user } = useAuth();
@@ -26,6 +27,10 @@ export default function ComposePage() {
   const [error, setError] = useState("");
   const [sent, setSent] = useState<SendLetterResponse | null>(null);
   const [busy, setBusy] = useState(false);
+  const distanceKm = distanceBetweenLocations(user?.location, recipient ? {
+    latitude: recipient.locationLatitude,
+    longitude: recipient.locationLongitude,
+  } : undefined);
 
   async function search(value: string) {
     setQuery(value);
@@ -92,7 +97,8 @@ export default function ComposePage() {
           <div className="mt-8 max-w-xs">
             <StampPreview
               from={user?.location?.city}
-              to={recipient?.displayName}
+              to={recipient?.locationCity}
+              distanceKm={distanceKm}
             />
           </div>
           <Link href="/dashboard" className="button-primary mt-8">
@@ -113,7 +119,8 @@ export default function ComposePage() {
             <div className="mt-10 hidden lg:block">
               <StampPreview
                 from={user?.location?.city}
-                to={recipient?.displayName}
+                to={recipient?.locationCity}
+                distanceKm={distanceKm}
               />
             </div>
           </div>
@@ -124,11 +131,11 @@ export default function ComposePage() {
             <label className="eyebrow">recipient</label>
             <div className="relative mt-3">
               <MagnifyingGlass
-                className="absolute left-3 top-3.5 text-[#6d6d6d]"
+                className="pointer-events-none absolute left-3 top-3.5 text-[#6d6d6d]"
                 size={17}
               />
               <input
-                className="field pl-10"
+                className="field !pl-11"
                 placeholder="Search username"
                 value={query}
                 onChange={(event) => search(event.target.value)}
@@ -151,7 +158,7 @@ export default function ComposePage() {
                       {match.displayName}
                     </span>
                     <span className="text-[11px] text-[#6d6d6d]">
-                      @{match.username}
+                      @{match.username} · {match.locationCity}
                     </span>
                   </button>
                 ))}
@@ -160,7 +167,7 @@ export default function ComposePage() {
             {recipient && (
               <div className="mt-3 flex items-center justify-between border-l-2 border-[#5d43bb] bg-[#f7f7f5] p-3 text-xs">
                 <span>
-                  <b>{recipient.displayName}</b> · @{recipient.username}
+                  <b>{recipient.displayName}</b> · @{recipient.username} · {recipient.locationCity}
                 </span>
                 <button
                   type="button"
@@ -192,7 +199,8 @@ export default function ComposePage() {
             <div className="mt-7 lg:hidden">
               <StampPreview
                 from={user?.location?.city}
-                to={recipient?.displayName}
+                to={recipient?.locationCity}
+                distanceKm={distanceKm}
               />
             </div>
             <button

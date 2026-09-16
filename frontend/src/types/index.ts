@@ -60,6 +60,9 @@ export interface RecipientSearchResult {
   id: string;
   username: string;
   displayName: string;
+  locationCity: string;
+  locationLatitude: number;
+  locationLongitude: number;
 }
 
 // ==========================================

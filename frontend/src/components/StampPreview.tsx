@@ -8,13 +8,28 @@ const STAMP_API_URL =
   process.env.NEXT_PUBLIC_STAMP_API_URL ||
   "https://stampyyy.vercel.app/api/stamp";
 
+function denominationForDistance(distanceKm?: number) {
+  const tiers =
+    distanceKm == null || distanceKm <= 250
+      ? ["₹1", "₹2", "₹5"]
+      : distanceKm <= 1000
+        ? ["₹5", "₹10", "₹15"]
+        : distanceKm <= 3000
+          ? ["₹15", "₹20", "₹25"]
+          : ["₹25", "₹35", "₹50"];
+
+  return tiers[Math.abs(Math.round(distanceKm ?? 0)) % tiers.length];
+}
+
 export default function StampPreview({
   from,
   to,
+  distanceKm,
   compact = false,
 }: {
   from?: string;
   to?: string;
+  distanceKm?: number;
   compact?: boolean;
 }) {
   const imageUrl = useMemo(() => {
@@ -22,12 +37,15 @@ export default function StampPreview({
     const params = new URLSearchParams({
       from,
       to,
+      code: from.replace(/[^a-z]/gi, "").slice(0, 3).toUpperCase(),
+      denom: denominationForDistance(distanceKm),
+      ...(distanceKm != null ? { distance: String(distanceKm) } : {}),
       format: "png",
       postmark: "1",
       width: "420",
     });
     return `${STAMP_API_URL}?${params.toString()}`;
-  }, [from, to]);
+  }, [from, to, distanceKm]);
 
   if (compact)
     return imageUrl ? (

@@ -102,7 +102,9 @@ public class AuthService
             location.Region,
             location.Country,
             location.CountryCode,
-            location.TimeZone
+            location.TimeZone,
+            location.Latitude,
+            location.Longitude
         );
 
         var response = new AuthResponse(
@@ -160,7 +162,9 @@ public class AuthService
             location.Region,
             location.Country,
             location.CountryCode,
-            location.TimeZone
+            location.TimeZone,
+            location.Latitude,
+            location.Longitude
         );
 
         var response = new AuthResponse(

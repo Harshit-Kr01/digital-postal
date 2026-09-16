@@ -11,6 +11,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
   const { login, register } = useAuth();
   const [error, setError] = useState("");
+  const [locationsError, setLocationsError] = useState("");
   const [busy, setBusy] = useState(false);
   const [locations, setLocations] = useState<PostalLocation[]>([]);
   const [form, setForm] = useState({
@@ -26,7 +27,7 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
       apiClient
         .get<PostalLocation[]>("/locations")
         .then((r) => setLocations(r.data))
-        .catch(() => {});
+        .catch((reason) => setLocationsError(getErrorMessage(reason)));
   }, [mode]);
   const change =
     (key: keyof typeof form) =>
@@ -116,14 +117,27 @@ export default function AuthForm({ mode }: { mode: "login" | "register" }) {
                   value={form.locationId}
                   onChange={change("locationId")}
                   required
+                  disabled={!!locationsError}
                 >
-                  <option value="">Select a postal location</option>
+                  <option value="">
+                    {locationsError
+                      ? "Locations unavailable"
+                      : locations.length
+                        ? "Select a postal location"
+                        : "Loading locations..."}
+                  </option>
                   {locations.map((location) => (
                     <option key={location.id} value={location.id}>
                       {location.city}, {location.country}
                     </option>
                   ))}
                 </select>
+                {locationsError && (
+                  <p className="mt-2 text-xs text-[#6d6d6d]">
+                    {locationsError} Check that the backend is running on port
+                    5271.
+                  </p>
+                )}
               </label>
             </>
           )}

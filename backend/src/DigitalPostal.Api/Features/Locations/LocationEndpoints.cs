@@ -24,7 +24,9 @@ public static class LocationEndpoints
                     l.Region,
                     l.Country,
                     l.CountryCode,
-                    l.TimeZone
+                    l.TimeZone,
+                    l.Latitude,
+                    l.Longitude
                 ))
                 .ToListAsync(ct);
 
@@ -59,7 +61,9 @@ public static class LocationEndpoints
                     l.Region,
                     l.Country,
                     l.CountryCode,
-                    l.TimeZone
+                    l.TimeZone,
+                    l.Latitude,
+                    l.Longitude
                 ))
                 .ToListAsync(ct);
 

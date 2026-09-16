@@ -63,7 +63,7 @@ export default function LandingPage() {
                 <p className="mt-2 text-sm font-bold">A letter is moving</p>
               </div>
               <div className="translate-x-1 -translate-y-1">
-                <StampPreview from="Delhi" to="Muzaffarpur" compact />
+              <StampPreview from="Delhi" to="Muzaffarpur" distanceKm={1080} compact />
               </div>
             </div>
             <div className="py-10">

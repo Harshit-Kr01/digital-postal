@@ -40,3 +40,14 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 Copy `.env.example` to `.env.local` and set the API origins for the environment.
 
 `NEXT_PUBLIC_STAMP_API_URL` points to Stampy’s dynamic image API. The homepage and compose flow use it to render route-specific stamps.
+
+### Development demo accounts
+
+Development startup seeds these searchable users:
+
+- `maya_mumbai`
+- `oliver_london`
+- `yuki_tokyo`
+- `alex_nyc`
+
+Password for each account: `PostalDemo123!`

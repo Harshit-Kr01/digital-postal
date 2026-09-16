@@ -102,3 +102,108 @@ textarea {
   background: var(--accent);
   display: inline-block;
 }
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes marker-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(93 67 187 / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgb(93 67 187 / 0);
+  }
+}
+
+@keyframes float-letter {
+  0%,
+  100% {
+    transform: rotate(-1deg) translateY(0);
+  }
+  50% {
+    transform: rotate(-1deg) translateY(-6px);
+  }
+}
+
+.reveal-up {
+  animation: reveal-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.reveal-delay-1 {
+  animation-delay: 100ms;
+}
+
+.reveal-delay-2 {
+  animation-delay: 200ms;
+}
+
+.reveal-delay-3 {
+  animation-delay: 300ms;
+}
+
+.route-marker {
+  animation: marker-pulse 2.2s ease-in-out infinite;
+}
+
+.floating-letter {
+  animation: float-letter 5s ease-in-out infinite;
+}
+
+.interactive-card {
+  transition: transform 0.25s ease, background-color 0.25s ease;
+}
+
+.interactive-card:hover {
+  transform: translateY(-4px);
+  background-color: #fff;
+}
+
+@media (min-width: 768px) and (min-height: 680px) {
+  .landing-page {
+    position: relative;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .landing-page > footer {
+    position: absolute;
+    right: 2.5rem;
+    bottom: 2rem;
+    left: 2.5rem;
+    width: auto;
+    max-width: 80rem;
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .landing-page > .landing-hero {
+    padding-top: 2.5rem;
+    padding-bottom: 6rem;
+  }
+
+  .landing-page .landing-visual {
+    min-height: 360px;
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

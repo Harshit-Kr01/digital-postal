@@ -2,7 +2,6 @@
 
 import { FormEvent, useState } from "react";
 import {
-  ArrowLeft,
   ArrowRight,
   Check,
   MagnifyingGlass,
@@ -71,12 +70,6 @@ export default function ComposePage() {
 
   return (
     <AppShell>
-      <Link
-        href="/dashboard"
-        className="mb-10 inline-flex items-center gap-2 text-xs font-bold"
-      >
-        <ArrowLeft size={15} /> Back to desk
-      </Link>
       {sent ? (
         <section className="max-w-2xl border border-[#141414] bg-white p-7 md:p-10">
           <div className="flex h-10 w-10 items-center justify-center bg-[#5d43bb] text-white">

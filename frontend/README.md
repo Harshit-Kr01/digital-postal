@@ -34,3 +34,9 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Frontend configuration
+
+Copy `.env.example` to `.env.local` and set the API origins for the environment.
+
+`NEXT_PUBLIC_STAMP_API_URL` points to Stampy’s dynamic image API. The homepage and compose flow use it to render route-specific stamps.

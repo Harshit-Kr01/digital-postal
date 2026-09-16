@@ -4,6 +4,7 @@
 
 export interface PostalLocation {
   id: string;
+  code?: string;
   city: string;
   region?: string;
   country: string;
@@ -42,13 +43,17 @@ export interface RegisterRequest {
 }
 
 export interface LoginRequest {
-  emailOrUsername: string;
+  usernameOrEmail: string;
   password: string;
 }
 
 export interface AuthResponse {
-  token: string;
-  user: User;
+  id: string;
+  username: string;
+  displayName: string;
+  email: string;
+  location: PostalLocation;
+  accessToken: string;
 }
 
 export interface RecipientSearchResult {
@@ -61,7 +66,7 @@ export interface RecipientSearchResult {
 // 3. Letters, Stamps & Postal Journey
 // ==========================================
 
-export type LetterStatus = 'IN_TRANSIT' | 'DELIVERED' | 'RETURNED';
+export type LetterStatus = "IN_TRANSIT" | "DELIVERED" | "RETURNED";
 
 export interface LetterStamp {
   id?: string;
@@ -79,14 +84,14 @@ export interface JourneyEvent {
 
 export interface IncomingInTransitLetter {
   id: string;
-  status: 'IN_TRANSIT';
+  status: "IN_TRANSIT";
   estimatedDeliveryAtUtc: string;
   displayEstimate: string;
 }
 
 export interface DeliveredIncomingLetter {
   id: string;
-  status: 'DELIVERED';
+  status: "DELIVERED";
   sender: Party;
   content: string;
   origin: PostalLocation;
@@ -97,7 +102,6 @@ export interface DeliveredIncomingLetter {
   stamps: LetterStamp[];
   journey?: JourneyEvent[];
 }
-
 
 export type IncomingLetter = IncomingInTransitLetter | DeliveredIncomingLetter;
 
@@ -117,6 +121,15 @@ export interface SentLetter {
 export interface SendLetterRequest {
   recipientId: string;
   content: string;
+}
+
+export interface SendLetterResponse {
+  id: string;
+  recipientId: string;
+  sentAtUtc: string;
+  estimatedDeliveryAtUtc: string;
+  distanceKm: number;
+  status: LetterStatus;
 }
 
 // ==========================================

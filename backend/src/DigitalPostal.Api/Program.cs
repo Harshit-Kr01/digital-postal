@@ -36,6 +36,7 @@ var jwtSettings = jwtSection.Get<JwtSettings>() ?? new JwtSettings();
 builder.Services.AddSingleton<IPasswordHasherService, PasswordHasherService>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<LetterService>();
 
 var signingKeyBytes = Encoding.UTF8.GetBytes(jwtSettings.SigningKey);
 

@@ -1,73 +1,105 @@
 "use client";
+
+import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { EnvelopeSimple, SignOut, UserCircle } from "@phosphor-icons/react";
+import { ArrowUpRight, EnvelopeSimple, SignOut } from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isLoading, logout } = useAuth();
-  if (isLoading)
+
+  if (isLoading) {
     return (
-      <div className="editorial-shell flex items-center justify-center">
-        <span className="eyebrow">opening mailbox</span>
+      <div className="min-h-screen bg-[#ffffff] flex items-center justify-center">
+        <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.12em] text-[#6a6a64]">
+          <span className="status-dot animate-pulse" />
+          <span>opening mailbox...</span>
+        </div>
       </div>
     );
+  }
+
   if (!user) {
     if (typeof window !== "undefined") router.replace("/login");
     return null;
   }
-  const nav = [
-    ["/dashboard", "Overview"],
-    ["/compose", "Write a letter"],
-    ["/settings", "Settings"],
+
+  const navLinks = [
+    { href: "/dashboard", label: "Overview" },
+    { href: "/compose", label: "Write a letter" },
+    { href: "/settings", label: "Settings" },
   ];
+
   return (
-    <div className="editorial-shell">
-      <header className="border-b editorial-rule px-5 py-5 md:px-10">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-3 text-sm font-bold"
-          >
-            <EnvelopeSimple size={20} weight="bold" /> digital postal
+    <div className="stampy-app min-h-screen flex flex-col bg-[#ffffff] text-[#151515]">
+      {/* Site Header matching stampy design language */}
+      <header className="site-header">
+        <div className="site-header-inner">
+          <Link href="/dashboard" className="wordmark">
+            digital postal<span>.</span>
           </Link>
-          <div className="flex items-center gap-5">
-            <div className="hidden text-right sm:block">
-              <p className="text-xs font-bold">{user.displayName}</p>
-              <p className="text-[10px] text-[#6d6d6d]">@{user.username}</p>
+
+          {/* Navigation with Stampy pill buttons */}
+          <nav className="site-nav">
+            {navLinks.map(({ href, label }) => {
+              const isActive = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`header-action-btn ${
+                    isActive ? "!bg-[#151515] !text-[#ffffff] !border-[#151515]" : ""
+                  }`}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* User profile & Sign out */}
+          <div className="flex items-center gap-3 ml-4">
+            <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-[#e5e5e0]">
+              <span className="status-dot" />
+              <div className="leading-tight">
+                <span className="block text-xs font-semibold text-[#151515]">
+                  {user.displayName}
+                </span>
+                <span className="font-mono text-[10px] text-[#6a6a64] uppercase tracking-wider">
+                  @{user.username}
+                </span>
+              </div>
             </div>
-            <UserCircle size={24} />
+
             <button
-              aria-label="Sign out"
+              type="button"
+              className="header-action-btn"
               onClick={() => {
                 logout();
                 router.push("/");
               }}
+              title="Sign out"
             >
-              <SignOut size={18} />
+              <SignOut size={13} weight="bold" />
+              <span className="hidden md:inline">Sign Out</span>
             </button>
           </div>
         </div>
       </header>
-      <nav className="border-b editorial-rule px-5 md:px-10">
-        <div className="mx-auto flex max-w-7xl gap-7">
-          {nav.map(([href, label]) => (
-            <Link
-              key={href}
-              href={href}
-              className={`border-b-2 py-4 text-xs font-bold ${pathname === href ? "border-[#5d43bb]" : "border-transparent text-[#6d6d6d]"}`}
-            >
-              {label}
-            </Link>
-          ))}
-          <span className="ml-auto py-4 text-[10px] font-bold uppercase tracking-[.12em] text-[#aaa]">
-            mailbox / beta
-          </span>
-        </div>
-      </nav>
-      <main className="mx-auto max-w-7xl px-5 py-12 md:px-10">{children}</main>
+
+      {/* Main Content Area */}
+      <main className="studio-main flex-1 flex flex-col">
+        {children}
+      </main>
+
+      {/* Studio Footer */}
+      <footer className="studio-footer w-full max-w-[1440px] mx-auto px-6 sm:px-12 md:px-20 pb-8">
+        <span>DIGITAL POSTAL / 2026</span>
+        <span>LETTERS, WITH TIME IN THEM.</span>
+      </footer>
     </div>
   );
 }

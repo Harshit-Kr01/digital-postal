@@ -3,7 +3,14 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowUpRight, EnvelopeSimple, SignOut } from "@phosphor-icons/react";
+import {
+  ArrowUpRight,
+  EnvelopeSimple,
+  PaperPlaneTilt,
+  SignOut,
+  SlidersHorizontal,
+  Tray,
+} from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -42,8 +49,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             digital postal<span>.</span>
           </Link>
 
-          {/* Navigation with Stampy pill buttons */}
-          <nav className="site-nav">
+          {/* Navigation with Stampy pill buttons (Desktop) */}
+          <nav className="site-nav hidden md:flex">
             {navLinks.map(({ href, label }) => {
               const isActive = pathname === href;
               return (
@@ -100,6 +107,44 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <span>DIGITAL POSTAL / 2026</span>
         <span>LETTERS, WITH TIME IN THEM.</span>
       </footer>
+
+      {/* Mobile Floating Navigation Dock (Stampy Design Language) */}
+      <div className="mobile-dock-wrapper" aria-label="Mobile Navigation">
+        <nav className="apple-dock">
+          <Link
+            href="/dashboard"
+            className={`dock-btn dock-btn-secondary ${
+              pathname === "/dashboard" ? "is-active" : ""
+            }`}
+            aria-label="Overview"
+          >
+            <Tray size={16} weight={pathname === "/dashboard" ? "fill" : "bold"} />
+            <span>Overview</span>
+          </Link>
+
+          <Link
+            href="/compose"
+            className={`dock-btn dock-btn-primary ${
+              pathname === "/compose" ? "is-active" : ""
+            }`}
+            aria-label="Write a letter"
+          >
+            <PaperPlaneTilt size={16} weight={pathname === "/compose" ? "fill" : "bold"} />
+            <span>Write</span>
+          </Link>
+
+          <Link
+            href="/settings"
+            className={`dock-btn dock-btn-secondary ${
+              pathname === "/settings" ? "is-active" : ""
+            }`}
+            aria-label="Settings"
+          >
+            <SlidersHorizontal size={16} weight={pathname === "/settings" ? "fill" : "bold"} />
+            <span>Settings</span>
+          </Link>
+        </nav>
+      </div>
     </div>
   );
 }

@@ -24,6 +24,7 @@ The frontend strictly implements the **Stampy design language**:
   - **Pill Buttons**: `rounded-full` (`border-radius: 999px`) pill buttons with uppercase monospace labels and subtle hover elevation (`translateY(-1.5px)`).
   - **Underline Input Fields**: Architectural inputs with borderless bodies and hairline bottom borders focusing to deep ink (`.field-label`, `.field-title`, `.field-sub`).
   - **Floating Letter Stage**: Realistic envelopes with drop shadow (`.stamp-shadow`) and live animated transit markers.
+  - **Floating Dock Navigation**: On mobile viewports (`< 768px`), header navigation pills are tucked away and replaced with an elevated, tactile floating pill dock inspired directly by Stampy (`.mobile-dock-wrapper` & `.apple-dock`), featuring active route indicators, safe-area inset compensation, and a prominent primary writing CTA.
 
 ---
 

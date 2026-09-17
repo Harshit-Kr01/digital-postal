@@ -111,6 +111,20 @@ export default function LandingPage() {
           <span>LETTERS, WITH TIME IN THEM.</span>
         </footer>
       </main>
+
+      {/* Mobile Floating Dock (Stampy Inspiration) */}
+      <div className="mobile-dock-wrapper" aria-label="Mobile Navigation">
+        <nav className="apple-dock">
+          <Link href="/login" className="dock-btn dock-btn-secondary">
+            <span>Sign in</span>
+          </Link>
+          <Link href="/register" className="dock-btn dock-btn-primary">
+            <PaperPlaneTilt size={15} weight="bold" />
+            <span>Write a letter</span>
+            <ArrowUpRight size={13} weight="bold" />
+          </Link>
+        </nav>
+      </div>
     </div>
   );
 }

@@ -127,6 +127,8 @@ if (app.Environment.IsDevelopment())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
     await LocationSeedData.SeedAsync(db);
+    var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasherService>();
+    await DemoUserSeedData.SeedAsync(db, passwordHasher);
 }
 
 app.UseHttpsRedirection();

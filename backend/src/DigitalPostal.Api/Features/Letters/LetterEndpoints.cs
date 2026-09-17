@@ -21,8 +21,8 @@ public static class LetterEndpoints
             CancellationToken ct) =>
         {
             var senderIdStr = principal.FindFirstValue(JwtRegisteredClaimNames.Sub)
-                           ?? principal.FindFirstValue("sub")
-                           ?? principal.FindFirstValue(ClaimTypes.NameIdentifier);
+                         ?? principal.FindFirstValue("sub")
+                         ?? principal.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (!Guid.TryParse(senderIdStr, out var senderId))
             {

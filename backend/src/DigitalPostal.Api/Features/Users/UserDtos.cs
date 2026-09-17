@@ -19,5 +19,8 @@ public sealed record UpdateLocationRequest(
 public sealed record UserSearchResultDto(
     Guid Id,
     string Username,
-    string DisplayName
+    string DisplayName,
+    string LocationCity,
+    double LocationLatitude,
+    double LocationLongitude
 );

@@ -44,7 +44,9 @@ public static class UserEndpoints
                 location.Region,
                 location.Country,
                 location.CountryCode,
-                location.TimeZone
+                location.TimeZone,
+                location.Latitude,
+                location.Longitude
             );
 
             var profile = new UserProfileDto(
@@ -113,10 +115,11 @@ public static class UserEndpoints
 
             var matches = await db.Users
                 .AsNoTracking()
+                .Include(u => u.CurrentLocation)
                 .Where(u => u.NormalizedUsername.StartsWith(query))
                 .OrderBy(u => u.Username)
                 .Take(20)
-                .Select(u => new UserSearchResultDto(u.Id, u.Username, u.DisplayName))
+                .Select(u => new UserSearchResultDto(u.Id, u.Username, u.DisplayName, u.CurrentLocation!.City, u.CurrentLocation.Latitude, u.CurrentLocation.Longitude))
                 .ToListAsync(ct);
 
             return Results.Ok(matches);

@@ -7,5 +7,7 @@ public sealed record LocationDto(
     string? Region,
     string Country,
     string CountryCode,
-    string TimeZone
+    string TimeZone,
+    double Latitude,
+    double Longitude
 );

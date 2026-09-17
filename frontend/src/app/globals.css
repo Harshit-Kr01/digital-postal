@@ -1,26 +1,710 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --ink: #151515;
+  --paper: #ffffff;
+  --line: #e5e5e0;
+  --line-strong: #151515;
+  --muted: #6a6a64;
+  --muted-light: #9e9e97;
+  --accent: #ff5a1f;
+  --accent-hover: #e34810;
+  --soft: #f8f8f5;
+  --soft-hover: #f0f0ea;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'DM Mono', monospace;
+  --font-serif: 'Playfair Display', Georgia, serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-width: 320px;
+  min-height: 100%;
+  overflow-x: hidden;
+  background: var(--paper);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  color: var(--ink);
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* ==========================================================================
+   Stampy App Design Language - Tokens, Typography & Layout
+   ========================================================================== */
+
+.stampy-app {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Site Header */
+.site-header {
+  height: 76px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+  position: relative;
+  z-index: 30;
+}
+
+.site-header-inner {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 clamp(24px, 5.5vw, 96px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wordmark {
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -1.3px;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.wordmark span {
+  color: var(--accent);
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.header-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 16px;
+  color: var(--ink);
+  font-family: 'DM Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.header-action-btn:hover {
+  background: var(--soft);
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.nav-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  padding: 8px 17px;
+  background: var(--ink);
+  color: #ffffff;
+  font-family: 'DM Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.nav-cta:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   Mobile Floating Dock Navigation (Stampy Inspiration)
+   ========================================================================== */
+
+.mobile-dock-wrapper {
+  position: fixed;
+  bottom: calc(20px + env(safe-area-inset-bottom, 16px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(calc(100vw - 32px), 380px);
+}
+
+@media (min-width: 768px) {
+  .mobile-dock-wrapper {
+    display: none !important;
+  }
+}
+
+.apple-dock,
+.stampy-dock {
+  width: 100%;
+  box-sizing: border-box;
+  pointer-events: auto;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px;
+  box-shadow: 0 14px 36px -4px rgba(21, 21, 21, 0.16), 0 2px 8px rgba(21, 21, 21, 0.06);
+}
+
+.dock-btn {
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  text-transform: uppercase;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  transition: transform 0.12s ease, background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  display: inline-flex;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dock-btn:active {
+  transform: scale(0.96);
+}
+
+.dock-btn-secondary {
+  background: var(--soft);
+  border-color: var(--line);
+  color: var(--ink);
+  flex: 1;
+}
+
+.dock-btn-secondary:hover,
+.dock-btn-secondary:focus-visible {
+  background: #f0f0eb;
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.dock-btn-secondary.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #ffffff;
+}
+
+.dock-btn-primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #ffffff;
+  flex: 1.35;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.dock-btn-primary:hover,
+.dock-btn-primary:focus-visible {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.dock-btn-primary.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.dock-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+/* Studio Main */
+.studio-main {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 28px clamp(24px, 5.5vw, 96px) 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Studio Stage Area */
+.studio-stage-area {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  margin: 10px 0 24px;
+}
+
+/* Intro Block */
+.intro-block {
+  max-width: 520px;
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.intro-block h1 {
+  font-size: clamp(34px, 4.2vw, 54px);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+  margin: 0;
+  color: var(--ink);
+}
+
+.intro-block h1 em {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: -0.03em;
+}
+
+.intro-copy {
+  max-width: 420px;
+  color: #55554f;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 14px 0 0;
+}
+
+/* Canvas Column & Stamp Stage */
+.canvas-column {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stamp-stage {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 16px 0 12px;
+}
+
+.stamp-stage-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 3.2vw, 48px);
+  width: auto;
+}
+
+.stage-flank {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 250px;
+  gap: 48px;
+}
+
+.stage-flank-left {
+  align-items: flex-end;
+}
+
+.stage-flank-right {
+  align-items: flex-start;
+}
+
+.stamp-art-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stamp-art {
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), filter 0.25s ease;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.stamp-art svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.stamp-art:hover {
+  transform: translateY(-4px) rotate(-0.5deg);
+  filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.18));
+}
+
+.stamp-shadow {
+  filter: drop-shadow(0 14px 24px rgba(33, 37, 41, 0.18)) drop-shadow(0 4px 8px rgba(33, 37, 41, 0.1));
+}
+
+.stamp-copied-popup {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 25;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--ink);
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  animation: copy-popup-in 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+@keyframes copy-popup-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -42%) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* Floating Lock / Status Pills */
+.floating-lock {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--ink);
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.floating-lock:hover {
+  border-color: var(--ink);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.09);
+}
+
+.floating-lock.is-locked,
+.floating-lock.is-active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #ffffff;
+}
+
+.floating-lock.is-locked:hover,
+.floating-lock.is-active:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Canvas Actions */
+.canvas-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 14px 0 4px;
+}
+
+/* Controls Column & Inputs */
+.controls-column {
+  border-top: 1px solid var(--line);
+  padding-top: 22px;
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) auto;
+  gap: 24px;
+  align-items: end;
+}
+
+.field-label {
+  display: block;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  transition: border-color 0.2s ease;
+}
+
+.field-label:focus-within {
+  border-bottom-color: var(--ink);
+}
+
+.field-label-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.field-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.field-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-left: 6px;
+}
+
+.field-label input,
+.field-label select,
+.field-label textarea {
+  display: block;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 6px 0 2px;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.field-label input::placeholder {
+  color: #bbb8b0;
+}
+
+/* Find Button / Primary Action Pill */
+.find-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #ffffff;
+  padding: 13px 22px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.find-button small {
+  font-size: 14px;
+  line-height: 0;
+}
+
+.find-button:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 18px rgba(255, 90, 31, 0.22);
+}
+
+/* Studio Footer */
+.studio-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  margin-top: 36px;
+  padding-top: 16px;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.studio-footer a {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.15s ease;
+}
+
+.studio-footer a:hover {
+  color: var(--accent);
+}
+
+/* Desktop Panoramic Layout */
+@media (min-width: 960px) {
+  .site-header {
+    height: 80px;
+  }
+
+  .studio-stage-area {
+    display: grid;
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+    gap: 36px;
+    align-items: center;
+    margin: 8px 0 20px;
+    width: 100%;
+  }
+
+  .intro-block {
+    max-width: 340px;
+  }
+
+  .canvas-column {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+}
+
+@media (min-width: 1260px) {
+  .studio-stage-area {
+    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr) minmax(260px, 320px);
+    gap: 40px;
+  }
+}
+
+@media (max-width: 959px) {
+  .site-header {
+    height: 66px;
+  }
+
+  .site-header-inner {
+    padding: 0 clamp(16px, 4vw, 32px);
+  }
+
+  .studio-footer {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 16px));
+  }
+
+  .controls-column {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .site-nav {
+    display: none !important;
+  }
+
+  .studio-main {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 16px));
+  }
 }

@@ -63,3 +63,14 @@ public sealed record LetterEventDetailDto(
     string EventType,
     DateTimeOffset OccurredAtUtc
 );
+
+public sealed record LetterJourneyEventDto(
+    string Type,
+    DateTimeOffset OccurredAtUtc,
+    string DisplayLabel
+);
+
+public sealed record LetterJourneyResponse(
+    Guid LetterId,
+    IReadOnlyList<LetterJourneyEventDto> Events
+);

@@ -81,6 +81,37 @@ public static class LetterEndpoints
         .WithName("GetLetterById")
         .WithSummary("Get letter details (subject to privacy rules and delivery status)");
 
+        // GET /api/v1/letters/{id}/journey
+        letters.MapGet("/{id:guid}/journey", async (
+            Guid id,
+            ClaimsPrincipal principal,
+            LetterService letterService,
+            CancellationToken ct) =>
+        {
+            var userId = GetUserId(principal);
+            if (userId == null) return Results.Unauthorized();
+
+            var result = await letterService.GetJourneyAsync(id, userId.Value, ct);
+
+            return result switch
+            {
+                GetJourneyResult.Success s => Results.Ok(s.Journey),
+                GetJourneyResult.NotFound => Results.NotFound(new { error = "Letter not found." }),
+                _ => Results.StatusCode(StatusCodes.Status500InternalServerError)
+            };
+        })
+        .WithName("GetLetterJourney")
+        .WithSummary("Get journey timeline of a letter (restricted for recipient until delivery)");
+
         return group;
+    }
+
+    private static Guid? GetUserId(ClaimsPrincipal principal)
+    {
+        var userIdStr = principal.FindFirstValue(JwtRegisteredClaimNames.Sub)
+                     ?? principal.FindFirstValue("sub")
+                     ?? principal.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        return Guid.TryParse(userIdStr, out var id) ? id : null;
     }
 }

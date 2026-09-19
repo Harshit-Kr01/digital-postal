@@ -24,6 +24,12 @@ public abstract record GetLetterResult
     public sealed record NotFound() : GetLetterResult;
 }
 
+public abstract record GetJourneyResult
+{
+    public sealed record Success(LetterJourneyResponse Journey) : GetJourneyResult;
+    public sealed record NotFound() : GetJourneyResult;
+}
+
 public class LetterService
 {
     private const int MaxContentLength = 5000;
@@ -31,11 +37,13 @@ public class LetterService
 
     private readonly AppDbContext _db;
     private readonly IDeliveryTimeCalculator _deliveryCalculator;
+    private readonly LetterAuthorizer _authorizer;
 
-    public LetterService(AppDbContext db, IDeliveryTimeCalculator deliveryCalculator)
+    public LetterService(AppDbContext db, IDeliveryTimeCalculator deliveryCalculator, LetterAuthorizer? authorizer = null)
     {
         _db = db;
         _deliveryCalculator = deliveryCalculator;
+        _authorizer = authorizer ?? new LetterAuthorizer();
     }
 
     public async Task<SendLetterResult> SendLetterAsync(
@@ -295,4 +303,49 @@ public class LetterService
 
         return new GetLetterResult.Full(full);
     }
+
+    public async Task<GetJourneyResult> GetJourneyAsync(
+        Guid letterId,
+        Guid currentUserId,
+        CancellationToken ct = default)
+    {
+        var letter = await _db.Letters
+            .Include(l => l.Events)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(l => l.Id == letterId, ct);
+
+        if (letter == null || !_authorizer.CanViewJourney(letter, currentUserId))
+        {
+            return new GetJourneyResult.NotFound();
+        }
+
+        var events = letter.Events
+            .OrderBy(e => e.OccurredAtUtc)
+            .Select(e => new LetterJourneyEventDto(
+                e.EventType.ToString(),
+                e.OccurredAtUtc,
+                FormatEventDisplayLabel(e)
+            ))
+            .ToList();
+
+        return new GetJourneyResult.Success(new LetterJourneyResponse(letter.Id, events));
+    }
+
+    private static string FormatEventDisplayLabel(LetterEvent e) =>
+        e.EventType switch
+        {
+            LetterEventType.DISPATCHED when e.LocationSnapshot != null =>
+                $"Dispatched from {e.LocationSnapshot.City}, {e.LocationSnapshot.Country}",
+            LetterEventType.DISPATCHED => "Dispatched",
+            LetterEventType.IN_TRANSIT when e.LocationSnapshot != null =>
+                $"In transit via {e.LocationSnapshot.City}, {e.LocationSnapshot.Country}",
+            LetterEventType.IN_TRANSIT => "In transit",
+            LetterEventType.ARRIVED_AT_DESTINATION when e.LocationSnapshot != null =>
+                $"Arrived at destination hub: {e.LocationSnapshot.City}, {e.LocationSnapshot.Country}",
+            LetterEventType.ARRIVED_AT_DESTINATION => "Arrived at destination hub",
+            LetterEventType.DELIVERED when e.LocationSnapshot != null =>
+                $"Delivered to {e.LocationSnapshot.City}, {e.LocationSnapshot.Country}",
+            LetterEventType.DELIVERED => "Delivered",
+            _ => e.EventType.ToString()
+        };
 }

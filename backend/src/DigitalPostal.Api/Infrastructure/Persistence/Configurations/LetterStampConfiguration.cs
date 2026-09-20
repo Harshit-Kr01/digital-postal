@@ -31,5 +31,6 @@ public class LetterStampConfiguration : IEntityTypeConfiguration<LetterStamp>
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(s => new { s.LetterId, s.AppliedAtUtc });
+        builder.HasIndex(s => new { s.LetterId, s.LetterEventId }).IsUnique();
     }
 }

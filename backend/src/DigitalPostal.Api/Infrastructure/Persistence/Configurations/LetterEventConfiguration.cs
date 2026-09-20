@@ -26,5 +26,6 @@ public class LetterEventConfiguration : IEntityTypeConfiguration<LetterEvent>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(e => new { e.LetterId, e.OccurredAtUtc });
+        builder.HasIndex(e => new { e.LetterId, e.EventType }).IsUnique();
     }
 }

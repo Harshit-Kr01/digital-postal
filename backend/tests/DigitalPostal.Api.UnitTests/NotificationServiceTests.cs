@@ -54,12 +54,14 @@ public class NotificationServiceTests
         var service = new NotificationService(db);
 
         var all = await service.GetUserNotificationsAsync(userId, unreadOnly: false, limit: 20);
-        all.Should().HaveCount(2);
+        all.Items.Should().HaveCount(2);
+        all.HasMore.Should().BeFalse();
+        all.NextCursor.Should().BeNull();
 
         var unreadOnly = await service.GetUserNotificationsAsync(userId, unreadOnly: true, limit: 20);
-        unreadOnly.Should().HaveCount(1);
-        unreadOnly.First().Title.Should().Be("Unread");
-        unreadOnly.First().IsRead.Should().BeFalse();
+        unreadOnly.Items.Should().HaveCount(1);
+        unreadOnly.Items.First().Title.Should().Be("Unread");
+        unreadOnly.Items.First().IsRead.Should().BeFalse();
     }
 
     [Fact]
@@ -167,14 +169,69 @@ public class NotificationServiceTests
         var service = new NotificationService(db);
 
         // Page 1: limit 2
-        var page1 = await service.GetUserNotificationsAsync(userId, unreadOnly: null, before: null, limit: 2);
-        page1.Should().HaveCount(2);
-        page1[0].Id.Should().Be(nNewest.Id);
-        page1[1].Id.Should().Be(nMiddle.Id);
+        var page1 = await service.GetUserNotificationsAsync(userId, unreadOnly: null, cursor: null, limit: 2);
+        page1.Items.Should().HaveCount(2);
+        page1.HasMore.Should().BeTrue();
+        page1.NextCursor.Should().NotBeNull();
+        page1.Items[0].Id.Should().Be(nNewest.Id);
+        page1.Items[1].Id.Should().Be(nMiddle.Id);
 
-        // Page 2: pass before = middle notification's CreatedAtUtc
-        var page2 = await service.GetUserNotificationsAsync(userId, unreadOnly: null, before: nMiddle.CreatedAtUtc, limit: 2);
-        page2.Should().HaveCount(1);
-        page2[0].Id.Should().Be(nOldest.Id);
+        // Page 2: pass cursor from page 1
+        var page2 = await service.GetUserNotificationsAsync(userId, unreadOnly: null, cursor: page1.NextCursor, limit: 2);
+        page2.Items.Should().HaveCount(1);
+        page2.HasMore.Should().BeFalse();
+        page2.NextCursor.Should().BeNull();
+        page2.Items[0].Id.Should().Be(nOldest.Id);
+    }
+
+    [Fact]
+    public async Task GetUserNotifications_TimestampCollision_TieBreaksById()
+    {
+        using var db = CreateInMemoryDbContext();
+        var userId = Guid.NewGuid();
+        var exactSameTime = DateTimeOffset.UtcNow.AddMinutes(-5);
+        var id1 = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        var id2 = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+
+        var n1 = new Notification
+        {
+            Id = id1,
+            UserId = userId,
+            LetterId = Guid.NewGuid(),
+            Type = NotificationType.LETTER_IN_TRANSIT,
+            Title = "Notification Collision 1",
+            Body = "Body 1",
+            CreatedAtUtc = exactSameTime
+        };
+        var n2 = new Notification
+        {
+            Id = id2,
+            UserId = userId,
+            LetterId = Guid.NewGuid(),
+            Type = NotificationType.LETTER_IN_TRANSIT,
+            Title = "Notification Collision 2",
+            Body = "Body 2",
+            CreatedAtUtc = exactSameTime
+        };
+
+        db.Notifications.AddRange(n1, n2);
+        await db.SaveChangesAsync();
+
+        var service = new NotificationService(db);
+
+        var page1 = await service.GetUserNotificationsAsync(userId, unreadOnly: null, cursor: null, limit: 1);
+        page1.Items.Should().HaveCount(1);
+        page1.HasMore.Should().BeTrue();
+        page1.NextCursor.Should().NotBeNull();
+
+        var page2 = await service.GetUserNotificationsAsync(userId, unreadOnly: null, cursor: page1.NextCursor, limit: 1);
+        page2.Items.Should().HaveCount(1);
+        page2.HasMore.Should().BeFalse();
+
+        var firstId = page1.Items[0].Id;
+        var secondId = page2.Items[0].Id;
+
+        firstId.Should().NotBe(secondId);
+        new[] { firstId, secondId }.Should().BeEquivalentTo(new[] { id1, id2 });
     }
 }

@@ -1,4 +1,5 @@
 using System.Globalization;
+using DigitalPostal.Api.Common.Pagination;
 using DigitalPostal.Api.Domain.Entities;
 using DigitalPostal.Api.Features.Letters;
 using DigitalPostal.Api.Infrastructure.Persistence;
@@ -30,10 +31,10 @@ public class MailboxService
         _authorizer = authorizer;
     }
 
-    public async Task<IReadOnlyList<object>> GetIncomingMailboxAsync(
+    public async Task<PagedResult<object>> GetIncomingMailboxAsync(
         Guid recipientId,
-        DateTimeOffset? before,
-        int limit,
+        string? cursor,
+        int limit = 20,
         CancellationToken ct = default)
     {
         var pageSize = Math.Clamp(limit, 1, 50);
@@ -44,17 +45,29 @@ public class MailboxService
             .AsNoTracking()
             .Where(l => l.RecipientId == recipientId);
 
-        if (before.HasValue)
+        if (CursorHelper.TryDecode(cursor, out var cursorTimestamp, out var cursorId))
         {
-            query = query.Where(l => l.SentAtUtc < before.Value);
+            if (cursorId == Guid.Empty)
+            {
+                query = query.Where(l => l.SentAtUtc < cursorTimestamp);
+            }
+            else
+            {
+                query = query.Where(l => l.SentAtUtc < cursorTimestamp ||
+                    (l.SentAtUtc == cursorTimestamp && l.Id.CompareTo(cursorId) < 0));
+            }
         }
 
         var letters = await query
             .OrderByDescending(l => l.SentAtUtc)
-            .Take(pageSize)
+            .ThenByDescending(l => l.Id)
+            .Take(pageSize + 1)
             .ToListAsync(ct);
 
-        return letters.Select<Letter, object>(l =>
+        var hasMore = letters.Count > pageSize;
+        var pagedLetters = hasMore ? letters.Take(pageSize).ToList() : letters;
+
+        var items = pagedLetters.Select<Letter, object>(l =>
         {
             if (!_authorizer.CanViewFullContent(l, recipientId))
             {
@@ -63,9 +76,18 @@ public class MailboxService
 
             return MapToDeliveredDto(l);
         }).ToList();
+
+        string? nextCursor = null;
+        if (hasMore && pagedLetters.Count > 0)
+        {
+            var lastLetter = pagedLetters[^1];
+            nextCursor = CursorHelper.CreateCursor(lastLetter.SentAtUtc, lastLetter.Id);
+        }
+
+        return new PagedResult<object>(items, nextCursor, hasMore);
     }
 
-    public Task<IReadOnlyList<object>> GetIncomingMailboxAsync(
+    public Task<PagedResult<object>> GetIncomingMailboxAsync(
         Guid recipientId,
         int limit,
         CancellationToken ct = default) =>
@@ -95,10 +117,10 @@ public class MailboxService
         return new GetIncomingLetterResult.Delivered(MapToDeliveredDto(letter));
     }
 
-    public async Task<IReadOnlyList<SentLetterDto>> GetSentMailboxAsync(
+    public async Task<PagedResult<SentLetterDto>> GetSentMailboxAsync(
         Guid senderId,
-        DateTimeOffset? before,
-        int limit,
+        string? cursor,
+        int limit = 20,
         CancellationToken ct = default)
     {
         var pageSize = Math.Clamp(limit, 1, 50);
@@ -109,20 +131,41 @@ public class MailboxService
             .AsNoTracking()
             .Where(l => l.SenderId == senderId);
 
-        if (before.HasValue)
+        if (CursorHelper.TryDecode(cursor, out var cursorTimestamp, out var cursorId))
         {
-            query = query.Where(l => l.SentAtUtc < before.Value);
+            if (cursorId == Guid.Empty)
+            {
+                query = query.Where(l => l.SentAtUtc < cursorTimestamp);
+            }
+            else
+            {
+                query = query.Where(l => l.SentAtUtc < cursorTimestamp ||
+                    (l.SentAtUtc == cursorTimestamp && l.Id.CompareTo(cursorId) < 0));
+            }
         }
 
         var letters = await query
             .OrderByDescending(l => l.SentAtUtc)
-            .Take(pageSize)
+            .ThenByDescending(l => l.Id)
+            .Take(pageSize + 1)
             .ToListAsync(ct);
 
-        return letters.Select(MapToSentDto).ToList();
+        var hasMore = letters.Count > pageSize;
+        var pagedLetters = hasMore ? letters.Take(pageSize).ToList() : letters;
+
+        var items = pagedLetters.Select(MapToSentDto).ToList();
+
+        string? nextCursor = null;
+        if (hasMore && pagedLetters.Count > 0)
+        {
+            var lastLetter = pagedLetters[^1];
+            nextCursor = CursorHelper.CreateCursor(lastLetter.SentAtUtc, lastLetter.Id);
+        }
+
+        return new PagedResult<SentLetterDto>(items, nextCursor, hasMore);
     }
 
-    public Task<IReadOnlyList<SentLetterDto>> GetSentMailboxAsync(
+    public Task<PagedResult<SentLetterDto>> GetSentMailboxAsync(
         Guid senderId,
         int limit,
         CancellationToken ct = default) =>

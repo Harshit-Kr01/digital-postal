@@ -14,7 +14,7 @@ public static class NotificationEndpoints
         // GET /api/v1/notifications
         notifications.MapGet("/", async (
             bool? unreadOnly,
-            DateTimeOffset? before,
+            string? cursor,
             int? limit,
             ClaimsPrincipal principal,
             NotificationService notificationService,
@@ -23,11 +23,11 @@ public static class NotificationEndpoints
             var userId = GetUserId(principal);
             if (userId == null) return Results.Unauthorized();
 
-            var list = await notificationService.GetUserNotificationsAsync(userId.Value, unreadOnly, before, limit ?? 20, ct);
-            return Results.Ok(list);
+            var result = await notificationService.GetUserNotificationsAsync(userId.Value, unreadOnly, cursor, limit ?? 20, ct);
+            return Results.Ok(result);
         })
         .WithName("GetNotifications")
-        .WithSummary("Get in-app notifications for authenticated user (supports cursor pagination via before)");
+        .WithSummary("Get in-app notifications for authenticated user with cursor pagination");
 
         // POST /api/v1/notifications/{id}/read
         notifications.MapPost("/{id:guid}/read", async (

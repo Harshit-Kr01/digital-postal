@@ -137,8 +137,11 @@ public class MailboxServiceTests
         var service = new MailboxService(db, new LetterAuthorizer());
         var mailbox = await service.GetIncomingMailboxAsync(recipient.Id, 20);
 
-        mailbox.Should().HaveCount(1);
-        var item = mailbox.First();
+        mailbox.Items.Should().HaveCount(1);
+        mailbox.HasMore.Should().BeFalse();
+        mailbox.NextCursor.Should().BeNull();
+
+        var item = mailbox.Items.First();
         item.Should().BeOfType<IncomingInTransitLetterDto>();
 
         var inTransit = (IncomingInTransitLetterDto)item;
@@ -172,8 +175,11 @@ public class MailboxServiceTests
         var service = new MailboxService(db, new LetterAuthorizer());
         var mailbox = await service.GetIncomingMailboxAsync(recipient.Id, 20);
 
-        mailbox.Should().HaveCount(1);
-        var item = mailbox.First();
+        mailbox.Items.Should().HaveCount(1);
+        mailbox.HasMore.Should().BeFalse();
+        mailbox.NextCursor.Should().BeNull();
+
+        var item = mailbox.Items.First();
         item.Should().BeOfType<DeliveredIncomingLetterDto>();
 
         var delivered = (DeliveredIncomingLetterDto)item;
@@ -237,8 +243,11 @@ public class MailboxServiceTests
         var service = new MailboxService(db, new LetterAuthorizer());
         var sentList = await service.GetSentMailboxAsync(sender.Id, 20);
 
-        sentList.Should().HaveCount(1);
-        var sent = sentList.First();
+        sentList.Items.Should().HaveCount(1);
+        sentList.HasMore.Should().BeFalse();
+        sentList.NextCursor.Should().BeNull();
+
+        var sent = sentList.Items.First();
         sent.Id.Should().Be(letter.Id);
         sent.Recipient.Username.Should().Be(recipient.Username);
         sent.Content.Should().Be("Sent letter content");
@@ -294,14 +303,78 @@ public class MailboxServiceTests
         var service = new MailboxService(db, new LetterAuthorizer());
 
         // Page 1: limit 2
-        var page1 = await service.GetIncomingMailboxAsync(recipient.Id, before: null, limit: 2);
-        page1.Should().HaveCount(2);
-        ((IncomingInTransitLetterDto)page1[0]).Id.Should().Be(letterNewest.Id);
-        ((IncomingInTransitLetterDto)page1[1]).Id.Should().Be(letterMiddle.Id);
+        var page1 = await service.GetIncomingMailboxAsync(recipient.Id, cursor: null, limit: 2);
+        page1.Items.Should().HaveCount(2);
+        page1.HasMore.Should().BeTrue();
+        page1.NextCursor.Should().NotBeNull();
+        ((IncomingInTransitLetterDto)page1.Items[0]).Id.Should().Be(letterNewest.Id);
+        ((IncomingInTransitLetterDto)page1.Items[1]).Id.Should().Be(letterMiddle.Id);
 
-        // Page 2: pass before = middle letter's SentAtUtc
-        var page2 = await service.GetIncomingMailboxAsync(recipient.Id, before: letterMiddle.SentAtUtc, limit: 2);
-        page2.Should().HaveCount(1);
-        ((IncomingInTransitLetterDto)page2[0]).Id.Should().Be(letterOldest.Id);
+        // Page 2: pass cursor from page 1
+        var page2 = await service.GetIncomingMailboxAsync(recipient.Id, cursor: page1.NextCursor, limit: 2);
+        page2.Items.Should().HaveCount(1);
+        page2.HasMore.Should().BeFalse();
+        page2.NextCursor.Should().BeNull();
+        ((IncomingInTransitLetterDto)page2.Items[0]).Id.Should().Be(letterOldest.Id);
+    }
+
+    [Fact]
+    public async Task GetIncomingMailbox_TimestampCollision_TieBreaksByIdWithoutDroppingRecords()
+    {
+        using var db = CreateInMemoryDbContext();
+        var (sender, recipient) = SeedUsers(db);
+
+        // Two letters sent at the EXACT same millisecond
+        var exactSameTime = DateTimeOffset.UtcNow.AddMinutes(-10);
+        var id1 = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var id2 = Guid.Parse("22222222-2222-2222-2222-222222222222");
+
+        var letter1 = new Letter
+        {
+            Id = id1,
+            SenderId = sender.Id,
+            RecipientId = recipient.Id,
+            OriginLocation = new LocationSnapshot("Mumbai", "MH", "India", "IN", 19.0, 72.8, "Asia/Kolkata"),
+            DestinationLocation = new LocationSnapshot("London", null, "United Kingdom", "GB", 51.5, -0.1, "Europe/London"),
+            Content = "Collision 1",
+            Status = LetterStatus.IN_TRANSIT,
+            SentAtUtc = exactSameTime,
+            EstimatedDeliveryAtUtc = exactSameTime.AddDays(3)
+        };
+        var letter2 = new Letter
+        {
+            Id = id2,
+            SenderId = sender.Id,
+            RecipientId = recipient.Id,
+            OriginLocation = new LocationSnapshot("Mumbai", "MH", "India", "IN", 19.0, 72.8, "Asia/Kolkata"),
+            DestinationLocation = new LocationSnapshot("London", null, "United Kingdom", "GB", 51.5, -0.1, "Europe/London"),
+            Content = "Collision 2",
+            Status = LetterStatus.IN_TRANSIT,
+            SentAtUtc = exactSameTime,
+            EstimatedDeliveryAtUtc = exactSameTime.AddDays(3)
+        };
+
+        db.Letters.AddRange(letter1, letter2);
+        await db.SaveChangesAsync();
+
+        var service = new MailboxService(db, new LetterAuthorizer());
+
+        // Fetch page 1 (limit 1)
+        var page1 = await service.GetIncomingMailboxAsync(recipient.Id, cursor: null, limit: 1);
+        page1.Items.Should().HaveCount(1);
+        page1.HasMore.Should().BeTrue();
+        page1.NextCursor.Should().NotBeNull();
+
+        // Fetch page 2 (limit 1) using nextCursor
+        var page2 = await service.GetIncomingMailboxAsync(recipient.Id, cursor: page1.NextCursor, limit: 1);
+        page2.Items.Should().HaveCount(1);
+        page2.HasMore.Should().BeFalse();
+
+        // The two items across page 1 and page 2 must be different and cover both letter1 and letter2
+        var firstId = ((IncomingInTransitLetterDto)page1.Items[0]).Id;
+        var secondId = ((IncomingInTransitLetterDto)page2.Items[0]).Id;
+
+        firstId.Should().NotBe(secondId);
+        new[] { firstId, secondId }.Should().BeEquivalentTo(new[] { id1, id2 });
     }
 }

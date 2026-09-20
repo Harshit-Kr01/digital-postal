@@ -40,6 +40,8 @@ public class LetterConfiguration : IEntityTypeConfiguration<Letter>
 
         builder.HasIndex(l => l.SenderId);
         builder.HasIndex(l => l.RecipientId);
+        builder.HasIndex(l => new { l.RecipientId, l.SentAtUtc });
+        builder.HasIndex(l => new { l.SenderId, l.SentAtUtc });
         builder.HasIndex(l => new { l.Status, l.EstimatedDeliveryAtUtc });
     }
 }

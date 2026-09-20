@@ -1,3 +1,4 @@
+using DigitalPostal.Api.Common.Pagination;
 using DigitalPostal.Api.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,11 +19,11 @@ public class NotificationService
         _db = db;
     }
 
-    public async Task<IReadOnlyList<NotificationDto>> GetUserNotificationsAsync(
+    public async Task<PagedResult<NotificationDto>> GetUserNotificationsAsync(
         Guid userId,
         bool? unreadOnly,
-        DateTimeOffset? before,
-        int limit,
+        string? cursor,
+        int limit = 20,
         CancellationToken ct = default)
     {
         var pageSize = Math.Clamp(limit, 1, 50);
@@ -36,14 +37,23 @@ public class NotificationService
             query = query.Where(n => n.ReadAtUtc == null);
         }
 
-        if (before.HasValue)
+        if (CursorHelper.TryDecode(cursor, out var cursorTimestamp, out var cursorId))
         {
-            query = query.Where(n => n.CreatedAtUtc < before.Value);
+            if (cursorId == Guid.Empty)
+            {
+                query = query.Where(n => n.CreatedAtUtc < cursorTimestamp);
+            }
+            else
+            {
+                query = query.Where(n => n.CreatedAtUtc < cursorTimestamp ||
+                    (n.CreatedAtUtc == cursorTimestamp && n.Id.CompareTo(cursorId) < 0));
+            }
         }
 
-        return await query
+        var notifications = await query
             .OrderByDescending(n => n.CreatedAtUtc)
-            .Take(pageSize)
+            .ThenByDescending(n => n.Id)
+            .Take(pageSize + 1)
             .Select(n => new NotificationDto(
                 n.Id,
                 n.LetterId,
@@ -55,9 +65,21 @@ public class NotificationService
                 n.CreatedAtUtc
             ))
             .ToListAsync(ct);
+
+        var hasMore = notifications.Count > pageSize;
+        var pagedNotifications = hasMore ? notifications.Take(pageSize).ToList() : notifications;
+
+        string? nextCursor = null;
+        if (hasMore && pagedNotifications.Count > 0)
+        {
+            var lastNotification = pagedNotifications[^1];
+            nextCursor = CursorHelper.CreateCursor(lastNotification.CreatedAtUtc, lastNotification.Id);
+        }
+
+        return new PagedResult<NotificationDto>(pagedNotifications, nextCursor, hasMore);
     }
 
-    public Task<IReadOnlyList<NotificationDto>> GetUserNotificationsAsync(
+    public Task<PagedResult<NotificationDto>> GetUserNotificationsAsync(
         Guid userId,
         bool? unreadOnly,
         int limit,

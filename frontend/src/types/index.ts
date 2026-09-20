@@ -148,11 +148,12 @@ export interface SendLetterResponse {
 
 export interface AppNotification {
   id: string;
-  userId: string;
-  letterId?: string;
+  letterId?: string | null;
+  type: string;
   title: string;
   body: string;
-  readAtUtc?: string;
+  isRead: boolean;
+  readAtUtc?: string | null;
   createdAtUtc: string;
 }
 

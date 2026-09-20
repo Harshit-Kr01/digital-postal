@@ -12,6 +12,7 @@ import {
   Tray,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/context/AuthContext";
+import NotificationsPopover from "@/components/NotificationsPopover";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -67,8 +68,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          {/* User profile & Sign out */}
-          <div className="flex items-center gap-3 ml-4">
+          {/* User profile & Notifications & Sign out */}
+          <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+            <NotificationsPopover />
+
             <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-[#e5e5e0]">
               <span className="status-dot" />
               <div className="leading-tight">

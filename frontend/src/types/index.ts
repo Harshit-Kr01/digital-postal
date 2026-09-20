@@ -150,9 +150,12 @@ export interface AppNotification {
 }
 
 export interface ApiProblemDetails {
-  title: string;
-  status: number;
+  title?: string;
+  status?: number;
   detail?: string;
   code?: string;
-  errors?: Record<string, string[]>;
+  error?: string | { message?: string };
+  message?: string;
+  errors?: Record<string, string[] | string> | Array<string | { message?: string }>;
 }
+

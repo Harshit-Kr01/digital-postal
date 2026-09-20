@@ -40,20 +40,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setToken(savedToken);
           const res = await apiClient.get<User>("/me");
           setUser(res.data);
-        } else {
-          // Attempt silent session restore via HttpOnly refresh cookie
-          try {
-            const refreshRes = await apiClient.post<{ accessToken: string }>("/auth/refresh");
-            if (refreshRes.data?.accessToken) {
-              const newToken = refreshRes.data.accessToken;
-              localStorage.setItem("access_token", newToken);
-              setToken(newToken);
-              const meRes = await apiClient.get<User>("/me");
-              setUser(meRes.data);
-            }
-          } catch {
-            // No active session cookie found
-          }
         }
       } catch (error) {
         console.error("Session restore failed:", getErrorMessage(error));

@@ -42,116 +42,149 @@ export default function SettingsPage() {
 
   return (
     <AppShell>
-      <div className="settings-page max-w-3xl mx-auto w-full flex flex-col gap-6 py-2">
-        {/* Page Header */}
-        <div className="pb-4 border-b border-[#e5e5e0]">
-          <span className="eyebrow !m-0">ACCOUNT & POSTAL BASE</span>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-[#151515] mt-1">
-            Settings
-          </h1>
-        </div>
-
-        {/* Profile Snapshot Card */}
-        <div className="p-4 sm:p-5 border border-[#e5e5e0] bg-[#fafaf9] rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#151515] text-[#ffffff] font-bold text-sm flex items-center justify-center shrink-0">
-              {user?.displayName ? user.displayName[0].toUpperCase() : "U"}
-            </div>
-            <div>
-              <p className="font-semibold text-sm text-[#151515]">{user?.displayName}</p>
-              <p className="font-mono text-xs text-[#6a6a64]">@{user?.username} · {user?.email}</p>
-            </div>
-          </div>
-
-          <div className="font-mono text-xs text-[#6a6a64] flex items-center gap-2 self-start sm:self-center">
-            <span className="status-dot" />
-            <span>Current Base: <strong className="text-[#151515]">{user?.location?.city || "Not set"}</strong></span>
-          </div>
-        </div>
-
-        {/* Postal Base Selection Form */}
-        <form onSubmit={submit} className="border border-[#e5e5e0] bg-[#ffffff] p-5 sm:p-8 rounded-2xl shadow-xs flex flex-col gap-6">
-          <div>
-            <span className="eyebrow block mb-1">home post office</span>
-            <h2 className="text-lg font-semibold text-[#151515]">
-              Postal Origin Location
-            </h2>
-            <p className="text-xs text-[#6a6a64] mt-1">
-              Your home post office sets departure coordinates and delivery calculations for outgoing mail.
+      <div className="settings-page flex flex-col gap-8">
+        {/* Studio Intro Header */}
+        <div className="studio-stage-area">
+          <section className="intro-block">
+            <p className="eyebrow flex items-center gap-2">
+              <span className="status-dot animate-pulse" />
+              POSTAL PROFILE · SETTINGS
             </p>
-          </div>
+            <h1>
+              Set your origin.<br />
+              <em>Where letters begin.</em>
+            </h1>
+            <p className="intro-copy">
+              Your home postal location shapes all future letter delivery estimates.
+              Dispatched letters already in transit will keep their existing route.
+            </p>
+          </section>
 
-          <div>
-            <label className="block">
-              <span className="font-mono text-xs uppercase tracking-wider text-[#6a6a64] block mb-2">
-                Select your post office
-              </span>
-              <select
-                value={locationId}
-                onChange={(e) => setLocationId(e.target.value)}
-                required
-                className="w-full bg-[#f8f8f5] border border-[#e5e5e0] focus:border-[#151515] rounded-xl p-3 text-sm sm:text-base outline-none transition-colors font-sans"
-              >
-                <option value="">Choose a postal location...</option>
-                {locations.map((loc) => (
-                  <option key={loc.id} value={loc.id}>
-                    {loc.city}, {loc.country} ({loc.countryCode})
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {selectedLoc && (
-              <div className="mt-4 p-4 bg-[#f8f8f5] border border-[#e5e5e0] rounded-xl flex items-center justify-between gap-4">
-                <div className="grid grid-cols-3 gap-3 font-mono text-xs flex-1">
-                  <div>
-                    <span className="text-[#6a6a64] block text-[10px] uppercase">City</span>
-                    <span className="font-semibold text-[#151515] text-sm">{selectedLoc.city}</span>
-                  </div>
-                  <div>
-                    <span className="text-[#6a6a64] block text-[10px] uppercase">Country</span>
-                    <span className="font-semibold text-[#151515] text-sm">{selectedLoc.country}</span>
-                  </div>
-                  <div>
-                    <span className="text-[#6a6a64] block text-[10px] uppercase">Code</span>
-                    <span className="font-semibold text-[#ff5a1f] text-sm">{selectedLoc.countryCode}</span>
-                  </div>
-                </div>
-
-                <div className="shrink-0 hidden sm:block">
+          {/* Stamp Preview of User's Origin City */}
+          <div className="canvas-column">
+            <div className="stamp-stage">
+              <div className="stamp-stage-inner">
+                <div className="stamp-art-wrapper">
                   <StampPreview
-                    from={selectedLoc.city}
+                    from={selectedLoc?.city || "New Delhi"}
                     to="Worldwide"
                     distanceKm={1200}
-                    compact
                   />
                 </div>
               </div>
+            </div>
+            <div className="canvas-actions">
+              <span className="font-mono text-xs uppercase tracking-wider text-[#6a6a64]">
+                Postmark: {(selectedLoc?.city || "POSTAL").toUpperCase()} G.P.O.
+              </span>
+            </div>
+          </div>
+
+          {/* Profile Card */}
+          <aside className="hidden xl:flex flex-col justify-between border border-[#e5e5e0] bg-[#fafaf9] p-6 rounded-2xl max-w-[320px]">
+            <div>
+              <div className="flex items-center justify-between border-b border-[#e5e5e0] pb-3">
+                <span className="eyebrow !m-0">identity card</span>
+                <span className="status-dot" />
+              </div>
+
+              <div className="mt-5 space-y-4">
+                <div>
+                  <span className="font-mono text-[10px] text-[#6a6a64] uppercase tracking-wider block">Full Name</span>
+                  <span className="text-base font-semibold text-[#151515]">{user?.displayName}</span>
+                </div>
+                <div>
+                  <span className="font-mono text-[10px] text-[#6a6a64] uppercase tracking-wider block">Username</span>
+                  <span className="font-mono text-xs text-[#151515]">@{user?.username}</span>
+                </div>
+                <div>
+                  <span className="font-mono text-[10px] text-[#6a6a64] uppercase tracking-wider block">Email</span>
+                  <span className="text-xs text-[#151515]">{user?.email}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-[#e5e5e0]">
+              <span className="font-mono text-[10px] uppercase tracking-wider text-[#6a6a64]">
+                MEMBER OF DIGITAL POSTAL
+              </span>
+            </div>
+          </aside>
+        </div>
+
+        {/* Location Selection Form in Stampy styling */}
+        <section className="border-t border-[#e5e5e0] pt-8 max-w-4xl">
+          <div className="field-label-header mb-2">
+            <span className="field-title text-xl font-bold">Postal Origin Location</span>
+            <span className="field-sub">COORDINATES & TIME ZONE</span>
+          </div>
+
+          <form onSubmit={submit} className="mt-4 flex flex-col gap-6">
+            <div className="border border-[#e5e5e0] bg-[#ffffff] p-6 rounded-2xl">
+              <label className="block">
+                <span className="font-mono text-xs uppercase tracking-wider text-[#6a6a64] block mb-2">
+                  Select your home post office
+                </span>
+                <select
+                  value={locationId}
+                  onChange={(e) => setLocationId(e.target.value)}
+                  required
+                  className="w-full bg-[#f8f8f5] border border-[#e5e5e0] focus:border-[#151515] rounded-xl p-3.5 text-base outline-none transition-colors font-sans"
+                >
+                  <option value="">Choose a postal location...</option>
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.city}, {loc.country} ({loc.countryCode})
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {selectedLoc && (
+                <div className="mt-4 pt-4 border-t border-[#e5e5e0] grid grid-cols-2 sm:grid-cols-3 gap-4 font-mono text-xs">
+                  <div>
+                    <span className="text-[#6a6a64] block">City</span>
+                    <span className="font-semibold text-[#151515]">{selectedLoc.city}</span>
+                  </div>
+                  <div>
+                    <span className="text-[#6a6a64] block">Country</span>
+                    <span className="font-semibold text-[#151515]">{selectedLoc.country}</span>
+                  </div>
+                  <div>
+                    <span className="text-[#6a6a64] block">Code</span>
+                    <span className="font-semibold text-[#ff5a1f]">{selectedLoc.countryCode}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {message && (
+              <p className="p-4 bg-[#f2faf5] border-l-2 border-emerald-600 text-xs font-mono text-emerald-800">
+                {message}
+              </p>
             )}
-          </div>
 
-          {message && (
-            <p className="p-3 bg-[#f2faf5] border-l-2 border-emerald-600 text-xs font-mono text-emerald-800">
-              {message}
-            </p>
-          )}
+            {error && (
+              <p className="p-4 bg-[#fff0ed] border-l-2 border-[#ff5a1f] text-xs font-mono text-[#ff5a1f]">
+                {error}
+              </p>
+            )}
 
-          {error && (
-            <p className="p-3 bg-[#fff0ed] border-l-2 border-[#ff5a1f] text-xs font-mono text-[#ff5a1f]">
-              {error}
-            </p>
-          )}
-
-          <div className="pt-4 border-t border-[#e5e5e0] flex items-center justify-end">
-            <button
-              type="submit"
-              disabled={busy || !locationId}
-              className="h-11 px-6 rounded-full bg-[#151515] text-[#ffffff] hover:bg-[#ff5a1f] transition-all inline-flex items-center justify-center font-mono text-xs font-semibold uppercase tracking-wider w-full sm:w-auto shadow-xs cursor-pointer active:scale-95 disabled:opacity-60"
-            >
-              <span>{busy ? "Saving..." : "Save Location"}</span>
-            </button>
-          </div>
-        </form>
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-xs text-[#6a6a64]">
+                Your home base serves as the point of departure for all outgoing correspondence.
+              </p>
+              <button
+                type="submit"
+                disabled={busy || !locationId}
+                className="find-button !mt-0"
+              >
+                <span>{busy ? "Saving..." : "Save Location"}</span>
+                <small>↗</small>
+              </button>
+            </div>
+          </form>
+        </section>
       </div>
     </AppShell>
   );

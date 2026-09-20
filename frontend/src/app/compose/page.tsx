@@ -269,7 +269,6 @@ export default function ComposePage() {
               >
                 <PaperPlaneTilt size={15} weight="bold" />
                 <span>{busy ? "Dispatching..." : "Dispatch letter"}</span>
-                <small>↗</small>
               </button>
             </div>
           </form>

@@ -180,7 +180,6 @@ export default function SettingsPage() {
                 className="find-button !mt-0"
               >
                 <span>{busy ? "Saving..." : "Save Location"}</span>
-                <small>↗</small>
               </button>
             </div>
           </form>

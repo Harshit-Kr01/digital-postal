@@ -119,7 +119,7 @@ public static class UserEndpoints
                 .Where(u => u.NormalizedUsername.StartsWith(query))
                 .OrderBy(u => u.Username)
                 .Take(20)
-                .Select(u => new UserSearchResultDto(u.Id, u.Username, u.DisplayName, u.CurrentLocation!.City, u.CurrentLocation.Latitude, u.CurrentLocation.Longitude))
+                .Select(u => new UserSearchResultDto(u.Id, u.Username, u.DisplayName, u.CurrentLocation!.City, u.CurrentLocation.Latitude, u.CurrentLocation.Longitude, u.CurrentLocation.CountryCode))
                 .ToListAsync(ct);
 
             return Results.Ok(matches);

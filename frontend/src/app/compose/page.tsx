@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   ArrowRight,
   Check,
-  LockKey,
   MagnifyingGlass,
   PaperPlaneTilt,
   X,
@@ -15,17 +14,7 @@ import StampPreview from "@/components/StampPreview";
 import { useAuth } from "@/context/AuthContext";
 import apiClient, { getErrorMessage } from "@/lib/api";
 import type { RecipientSearchResult, SendLetterResponse } from "@/types";
-import { distanceBetweenLocations } from "@/lib/distance";
-
-function estimateTravelTime(distanceKm?: number): string {
-  if (distanceKm == null) return "Calculated after choosing recipient";
-  if (distanceKm <= 200) return "~6 hours";
-  if (distanceKm <= 500) return "~18 hours";
-  if (distanceKm <= 1200) return "~1.5 days";
-  if (distanceKm <= 3000) return "~2.5 days";
-  if (distanceKm <= 7000) return "~4 days";
-  return "~5 to 6 days";
-}
+import { calculateDeliveryEstimate } from "@/lib/distance";
 
 export default function ComposePage() {
   const { user } = useAuth();
@@ -40,15 +29,17 @@ export default function ComposePage() {
   const fromCity = user?.location?.city || "Your Desk";
   const toCity = recipient?.locationCity || "Recipient";
 
-  const distanceKm = distanceBetweenLocations(
+  const estimate = calculateDeliveryEstimate(
     user?.location,
     recipient
       ? {
           latitude: recipient.locationLatitude,
           longitude: recipient.locationLongitude,
+          countryCode: recipient.locationCountryCode,
         }
-      : undefined
+      : undefined,
   );
+  const distanceKm = estimate?.distanceKm;
 
   async function search(value: string) {
     setQuery(value);
@@ -105,7 +96,7 @@ export default function ComposePage() {
             </h1>
 
             <p className="mt-4 text-base text-[#6a6a64] leading-relaxed">
-              It has been sealed and dispatched to @{recipient?.username}. Estimated arrival:{" "}
+              Dispatched to @{recipient?.username}. Estimated arrival:{" "}
               <strong className="text-[#151515]">
                 {new Date(sent.estimatedDeliveryAtUtc).toLocaleString([], {
                   dateStyle: "medium",
@@ -114,14 +105,28 @@ export default function ComposePage() {
               </strong>.
             </p>
 
-            <div className="mt-8 pt-8 border-t border-[#e5e5e0] flex items-center justify-between">
+            <div className="mt-8 pt-8 border-t border-[#e5e5e0] flex flex-col sm:flex-row items-center justify-between gap-4">
               <span className="font-mono text-xs text-[#6a6a64]">
                 {fromCity} ➔ {toCity} ({distanceKm ? `${distanceKm.toLocaleString()} km` : ""})
               </span>
-              <Link href="/dashboard" className="find-button !mt-0">
-                <span>Return to Desk</span>
-                <ArrowRight size={14} weight="bold" />
-              </Link>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSent(null);
+                    setContent("");
+                    setRecipient(null);
+                    setQuery("");
+                  }}
+                  className="header-action-btn"
+                >
+                  Write Another
+                </button>
+                <Link href="/dashboard" className="find-button !mt-0">
+                  <span>View in Mailbox</span>
+                  <ArrowRight size={14} weight="bold" />
+                </Link>
+              </div>
             </div>
           </section>
         </div>
@@ -139,18 +144,19 @@ export default function ComposePage() {
 
           <form
             onSubmit={submit}
-            className="border border-[#e5e5e0] bg-[#ffffff] p-6 sm:p-10 rounded-2xl shadow-xs flex flex-col min-h-[640px]"
+            className="border border-[#e5e5e0] bg-[#ffffff] p-4 sm:p-10 rounded-2xl shadow-xs flex flex-col min-h-[480px] sm:min-h-[640px]"
           >
             {/* Sheet Header: Recipient on the left, Stamp nestled in upper-right corner */}
-            <div className="flex items-start justify-between gap-6 pb-6 border-b border-[#e5e5e0]">
+            {/* Sheet Header: Recipient and Stamp placed side by side */}
+            <div className="flex flex-row items-center justify-between gap-4 pb-6 border-b border-[#e5e5e0]">
               {/* Left: Recipient Search / Tag */}
-              <div className="flex-1 max-w-md">
+              <div className="flex-1 min-w-0 max-w-md">
                 <span className="eyebrow block mb-2">to recipient</span>
                 {recipient ? (
-                  <div className="flex items-center justify-between p-3.5 bg-[#f8f8f5] border border-[#e5e5e0] rounded-xl">
-                    <div>
-                      <p className="text-base font-bold text-[#151515] leading-snug">{recipient.displayName}</p>
-                      <p className="font-mono text-xs text-[#6a6a64]">
+                  <div className="flex items-center justify-between gap-3 p-3 sm:p-3.5 bg-[#f8f8f5] border border-[#e5e5e0] rounded-xl">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-bold text-[#151515] leading-snug truncate">{recipient.displayName}</p>
+                      <p className="font-mono text-xs text-[#6a6a64] truncate">
                         @{recipient.username} · {recipient.locationCity}
                       </p>
                     </div>
@@ -160,11 +166,11 @@ export default function ComposePage() {
                         setRecipient(null);
                         setQuery("");
                       }}
-                      className="header-action-btn !py-1 !px-2.5 !text-[10px]"
-                      title="Change recipient"
+                      className="w-8 h-8 rounded-lg text-[#6a6a64] hover:text-[#ff5a1f] hover:bg-[#e5e5e0] flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                      title="Remove recipient"
+                      aria-label="Remove recipient"
                     >
-                      <X size={12} />
-                      <span>change</span>
+                      <X size={15} weight="bold" />
                     </button>
                   </div>
                 ) : (
@@ -207,8 +213,8 @@ export default function ComposePage() {
                 )}
               </div>
 
-              {/* Upper-Right Corner: The Postage Stamp */}
-              <div className="flex flex-col items-end flex-shrink-0">
+              {/* Right: The Postage Stamp right beside it */}
+              <div className="flex flex-col items-end shrink-0">
                 <StampPreview
                   from={fromCity}
                   to={recipient ? toCity : undefined}
@@ -216,7 +222,7 @@ export default function ComposePage() {
                   compact
                 />
                 {!recipient && (
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-[#b0b0a8] mt-1.5">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-[#b0b0a8] mt-1.5 hidden sm:block">
                     stamp / pending
                   </span>
                 )}
@@ -243,19 +249,16 @@ export default function ComposePage() {
               </p>
             )}
 
-            {/* Sheet Footer: Sealed indicator, Character count & Dispatch action */}
-            <div className="pt-4 border-t border-[#e5e5e0] flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Sheet Footer: Character count & Dispatch action */}
+            <div className="pt-4 border-t border-[#e5e5e0] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4 font-mono text-xs text-[#6a6a64]">
-                <span className="flex items-center gap-1.5">
-                  <LockKey size={13} weight="fill" />
-                  <span>Sealed until arrival</span>
-                </span>
-                <span>·</span>
                 <span>{content.length} / 5000</span>
-                {recipient && distanceKm && (
+                {recipient && estimate && (
                   <>
                     <span>·</span>
-                    <span className="text-[#ff5a1f]">{estimateTravelTime(distanceKm)}</span>
+                    <span className="text-[#ff5a1f]" title={`Arrival estimate: ${estimate.displayEstimate}`}>
+                      {estimate.durationLabel} ({estimate.displayEstimate})
+                    </span>
                   </>
                 )}
               </div>
@@ -263,11 +266,10 @@ export default function ComposePage() {
               <button
                 type="submit"
                 disabled={busy || !recipient || !content.trim()}
-                className="find-button !mt-0 sm:min-w-44"
+                className="find-button !mt-0 w-full sm:w-auto sm:min-w-44 justify-center"
               >
                 <PaperPlaneTilt size={15} weight="bold" />
                 <span>{busy ? "Dispatching..." : "Dispatch letter"}</span>
-                <small>↗</small>
               </button>
             </div>
           </form>

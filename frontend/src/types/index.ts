@@ -63,6 +63,13 @@ export interface RecipientSearchResult {
   locationCity: string;
   locationLatitude: number;
   locationLongitude: number;
+  locationCountryCode?: string;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  nextCursor?: string | null;
+  hasMore: boolean;
 }
 
 // ==========================================
@@ -141,11 +148,12 @@ export interface SendLetterResponse {
 
 export interface AppNotification {
   id: string;
-  userId: string;
-  letterId?: string;
+  letterId?: string | null;
+  type: string;
   title: string;
   body: string;
-  readAtUtc?: string;
+  isRead: boolean;
+  readAtUtc?: string | null;
   createdAtUtc: string;
 }
 

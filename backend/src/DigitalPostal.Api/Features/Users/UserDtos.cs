@@ -22,5 +22,6 @@ public sealed record UserSearchResultDto(
     string DisplayName,
     string LocationCity,
     double LocationLatitude,
-    double LocationLongitude
+    double LocationLongitude,
+    string? LocationCountryCode = null
 );

@@ -144,18 +144,19 @@ export default function ComposePage() {
 
           <form
             onSubmit={submit}
-            className="border border-[#e5e5e0] bg-[#ffffff] p-6 sm:p-10 rounded-2xl shadow-xs flex flex-col min-h-[640px]"
+            className="border border-[#e5e5e0] bg-[#ffffff] p-4 sm:p-10 rounded-2xl shadow-xs flex flex-col min-h-[480px] sm:min-h-[640px]"
           >
             {/* Sheet Header: Recipient on the left, Stamp nestled in upper-right corner */}
-            <div className="flex items-start justify-between gap-6 pb-6 border-b border-[#e5e5e0]">
+            {/* Sheet Header: Recipient and Stamp placed side by side */}
+            <div className="flex flex-row items-center justify-between gap-4 pb-6 border-b border-[#e5e5e0]">
               {/* Left: Recipient Search / Tag */}
-              <div className="flex-1 max-w-md">
+              <div className="flex-1 min-w-0 max-w-md">
                 <span className="eyebrow block mb-2">to recipient</span>
                 {recipient ? (
-                  <div className="flex items-center justify-between p-3.5 bg-[#f8f8f5] border border-[#e5e5e0] rounded-xl">
-                    <div>
-                      <p className="text-base font-bold text-[#151515] leading-snug">{recipient.displayName}</p>
-                      <p className="font-mono text-xs text-[#6a6a64]">
+                  <div className="flex items-center justify-between gap-3 p-3 sm:p-3.5 bg-[#f8f8f5] border border-[#e5e5e0] rounded-xl">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-bold text-[#151515] leading-snug truncate">{recipient.displayName}</p>
+                      <p className="font-mono text-xs text-[#6a6a64] truncate">
                         @{recipient.username} · {recipient.locationCity}
                       </p>
                     </div>
@@ -165,11 +166,11 @@ export default function ComposePage() {
                         setRecipient(null);
                         setQuery("");
                       }}
-                      className="header-action-btn !py-1 !px-2.5 !text-[10px]"
-                      title="Change recipient"
+                      className="w-8 h-8 rounded-lg text-[#6a6a64] hover:text-[#ff5a1f] hover:bg-[#e5e5e0] flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                      title="Remove recipient"
+                      aria-label="Remove recipient"
                     >
-                      <X size={12} />
-                      <span>change</span>
+                      <X size={15} weight="bold" />
                     </button>
                   </div>
                 ) : (
@@ -212,8 +213,8 @@ export default function ComposePage() {
                 )}
               </div>
 
-              {/* Upper-Right Corner: The Postage Stamp */}
-              <div className="flex flex-col items-end flex-shrink-0">
+              {/* Right: The Postage Stamp right beside it */}
+              <div className="flex flex-col items-end shrink-0">
                 <StampPreview
                   from={fromCity}
                   to={recipient ? toCity : undefined}
@@ -221,7 +222,7 @@ export default function ComposePage() {
                   compact
                 />
                 {!recipient && (
-                  <span className="font-mono text-[9px] uppercase tracking-wider text-[#b0b0a8] mt-1.5">
+                  <span className="font-mono text-[9px] uppercase tracking-wider text-[#b0b0a8] mt-1.5 hidden sm:block">
                     stamp / pending
                   </span>
                 )}
@@ -249,7 +250,7 @@ export default function ComposePage() {
             )}
 
             {/* Sheet Footer: Character count & Dispatch action */}
-            <div className="pt-4 border-t border-[#e5e5e0] flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="pt-4 border-t border-[#e5e5e0] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4 font-mono text-xs text-[#6a6a64]">
                 <span>{content.length} / 5000</span>
                 {recipient && estimate && (
@@ -265,7 +266,7 @@ export default function ComposePage() {
               <button
                 type="submit"
                 disabled={busy || !recipient || !content.trim()}
-                className="find-button !mt-0 sm:min-w-44"
+                className="find-button !mt-0 w-full sm:w-auto sm:min-w-44 justify-center"
               >
                 <PaperPlaneTilt size={15} weight="bold" />
                 <span>{busy ? "Dispatching..." : "Dispatch letter"}</span>

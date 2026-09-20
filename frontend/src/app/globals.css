@@ -705,6 +705,17 @@ button:disabled {
   }
 
   .studio-main {
-    padding-bottom: calc(88px + env(safe-area-inset-bottom, 16px));
+    padding: 20px 16px calc(100px + env(safe-area-inset-bottom, 20px)) 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .wordmark {
+    font-size: 20px;
+  }
+
+  .studio-stage-area h1 {
+    font-size: 32px;
+    line-height: 1.15;
   }
 }

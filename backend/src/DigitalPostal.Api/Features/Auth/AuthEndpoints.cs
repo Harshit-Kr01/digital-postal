@@ -92,7 +92,7 @@ public static class AuthEndpoints
         httpContext.Response.Cookies.Append(RefreshTokenCookieName, token, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = httpContext.Request.IsHttps,
             SameSite = SameSiteMode.Lax,
             Expires = DateTimeOffset.UtcNow.AddDays(expiryDays),
             Path = "/"
@@ -103,7 +103,7 @@ public static class AuthEndpoints
         httpContext.Response.Cookies.Delete(RefreshTokenCookieName, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = httpContext.Request.IsHttps,
             SameSite = SameSiteMode.Lax,
             Path = "/"
         });

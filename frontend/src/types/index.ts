@@ -63,6 +63,13 @@ export interface RecipientSearchResult {
   locationCity: string;
   locationLatitude: number;
   locationLongitude: number;
+  locationCountryCode?: string;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  nextCursor?: string | null;
+  hasMore: boolean;
 }
 
 // ==========================================

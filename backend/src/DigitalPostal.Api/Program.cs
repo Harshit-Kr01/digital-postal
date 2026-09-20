@@ -6,6 +6,8 @@ using DigitalPostal.Api.Infrastructure.Identity;
 using DigitalPostal.Api.Infrastructure.Persistence;
 using DigitalPostal.Api.Infrastructure.Persistence.Seed;
 using DigitalPostal.Api.Features.Letters;
+using DigitalPostal.Api.Features.Mailbox;
+using DigitalPostal.Api.Features.Notifications;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -38,6 +40,8 @@ builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<LetterAuthorizer>();
 builder.Services.AddScoped<LetterService>();
+builder.Services.AddScoped<MailboxService>();
+builder.Services.AddScoped<NotificationService>();
 
 var signingKeyBytes = Encoding.UTF8.GetBytes(jwtSettings.SigningKey);
 
@@ -148,5 +152,7 @@ apiV1.MapLocationEndpoints();
 apiV1.MapAuthEndpoints();
 apiV1.MapUserEndpoints();
 apiV1.MapLetterEndpoints();
+apiV1.MapMailboxEndpoints();
+apiV1.MapNotificationEndpoints();
 
 app.Run();

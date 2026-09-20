@@ -21,6 +21,7 @@ public class NotificationService
     public async Task<IReadOnlyList<NotificationDto>> GetUserNotificationsAsync(
         Guid userId,
         bool? unreadOnly,
+        DateTimeOffset? before,
         int limit,
         CancellationToken ct = default)
     {
@@ -33,6 +34,11 @@ public class NotificationService
         if (unreadOnly == true)
         {
             query = query.Where(n => n.ReadAtUtc == null);
+        }
+
+        if (before.HasValue)
+        {
+            query = query.Where(n => n.CreatedAtUtc < before.Value);
         }
 
         return await query
@@ -50,6 +56,13 @@ public class NotificationService
             ))
             .ToListAsync(ct);
     }
+
+    public Task<IReadOnlyList<NotificationDto>> GetUserNotificationsAsync(
+        Guid userId,
+        bool? unreadOnly,
+        int limit,
+        CancellationToken ct = default) =>
+        GetUserNotificationsAsync(userId, unreadOnly, null, limit, ct);
 
     public async Task<MarkNotificationResult> MarkAsReadAsync(
         Guid notificationId,

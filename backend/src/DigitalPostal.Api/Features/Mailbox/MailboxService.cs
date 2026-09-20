@@ -32,16 +32,24 @@ public class MailboxService
 
     public async Task<IReadOnlyList<object>> GetIncomingMailboxAsync(
         Guid recipientId,
+        DateTimeOffset? before,
         int limit,
         CancellationToken ct = default)
     {
         var pageSize = Math.Clamp(limit, 1, 50);
 
-        var letters = await _db.Letters
+        var query = _db.Letters
             .Include(l => l.Sender)
             .Include(l => l.Stamps)
             .AsNoTracking()
-            .Where(l => l.RecipientId == recipientId)
+            .Where(l => l.RecipientId == recipientId);
+
+        if (before.HasValue)
+        {
+            query = query.Where(l => l.SentAtUtc < before.Value);
+        }
+
+        var letters = await query
             .OrderByDescending(l => l.SentAtUtc)
             .Take(pageSize)
             .ToListAsync(ct);
@@ -56,6 +64,12 @@ public class MailboxService
             return MapToDeliveredDto(l);
         }).ToList();
     }
+
+    public Task<IReadOnlyList<object>> GetIncomingMailboxAsync(
+        Guid recipientId,
+        int limit,
+        CancellationToken ct = default) =>
+        GetIncomingMailboxAsync(recipientId, null, limit, ct);
 
     public async Task<GetIncomingLetterResult> GetIncomingLetterByIdAsync(
         Guid letterId,
@@ -83,22 +97,36 @@ public class MailboxService
 
     public async Task<IReadOnlyList<SentLetterDto>> GetSentMailboxAsync(
         Guid senderId,
+        DateTimeOffset? before,
         int limit,
         CancellationToken ct = default)
     {
         var pageSize = Math.Clamp(limit, 1, 50);
 
-        var letters = await _db.Letters
+        var query = _db.Letters
             .Include(l => l.Recipient)
             .Include(l => l.Stamps)
             .AsNoTracking()
-            .Where(l => l.SenderId == senderId)
+            .Where(l => l.SenderId == senderId);
+
+        if (before.HasValue)
+        {
+            query = query.Where(l => l.SentAtUtc < before.Value);
+        }
+
+        var letters = await query
             .OrderByDescending(l => l.SentAtUtc)
             .Take(pageSize)
             .ToListAsync(ct);
 
         return letters.Select(MapToSentDto).ToList();
     }
+
+    public Task<IReadOnlyList<SentLetterDto>> GetSentMailboxAsync(
+        Guid senderId,
+        int limit,
+        CancellationToken ct = default) =>
+        GetSentMailboxAsync(senderId, null, limit, ct);
 
     public async Task<GetSentLetterResult> GetSentLetterByIdAsync(
         Guid letterId,

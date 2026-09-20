@@ -243,4 +243,65 @@ public class MailboxServiceTests
         sent.Recipient.Username.Should().Be(recipient.Username);
         sent.Content.Should().Be("Sent letter content");
     }
+
+    [Fact]
+    public async Task GetIncomingMailbox_CursorPagination_ReturnsOlderLetters()
+    {
+        using var db = CreateInMemoryDbContext();
+        var (sender, recipient) = SeedUsers(db);
+
+        var now = DateTimeOffset.UtcNow;
+        var letterNewest = new Letter
+        {
+            Id = Guid.NewGuid(),
+            SenderId = sender.Id,
+            RecipientId = recipient.Id,
+            OriginLocation = new LocationSnapshot("Mumbai", "MH", "India", "IN", 19.0, 72.8, "Asia/Kolkata"),
+            DestinationLocation = new LocationSnapshot("London", null, "United Kingdom", "GB", 51.5, -0.1, "Europe/London"),
+            Content = "Letter 1 (newest)",
+            Status = LetterStatus.IN_TRANSIT,
+            SentAtUtc = now.AddHours(-1),
+            EstimatedDeliveryAtUtc = now.AddDays(3)
+        };
+        var letterMiddle = new Letter
+        {
+            Id = Guid.NewGuid(),
+            SenderId = sender.Id,
+            RecipientId = recipient.Id,
+            OriginLocation = new LocationSnapshot("Mumbai", "MH", "India", "IN", 19.0, 72.8, "Asia/Kolkata"),
+            DestinationLocation = new LocationSnapshot("London", null, "United Kingdom", "GB", 51.5, -0.1, "Europe/London"),
+            Content = "Letter 2 (middle)",
+            Status = LetterStatus.IN_TRANSIT,
+            SentAtUtc = now.AddHours(-2),
+            EstimatedDeliveryAtUtc = now.AddDays(3)
+        };
+        var letterOldest = new Letter
+        {
+            Id = Guid.NewGuid(),
+            SenderId = sender.Id,
+            RecipientId = recipient.Id,
+            OriginLocation = new LocationSnapshot("Mumbai", "MH", "India", "IN", 19.0, 72.8, "Asia/Kolkata"),
+            DestinationLocation = new LocationSnapshot("London", null, "United Kingdom", "GB", 51.5, -0.1, "Europe/London"),
+            Content = "Letter 3 (oldest)",
+            Status = LetterStatus.IN_TRANSIT,
+            SentAtUtc = now.AddHours(-3),
+            EstimatedDeliveryAtUtc = now.AddDays(3)
+        };
+
+        db.Letters.AddRange(letterNewest, letterMiddle, letterOldest);
+        await db.SaveChangesAsync();
+
+        var service = new MailboxService(db, new LetterAuthorizer());
+
+        // Page 1: limit 2
+        var page1 = await service.GetIncomingMailboxAsync(recipient.Id, before: null, limit: 2);
+        page1.Should().HaveCount(2);
+        ((IncomingInTransitLetterDto)page1[0]).Id.Should().Be(letterNewest.Id);
+        ((IncomingInTransitLetterDto)page1[1]).Id.Should().Be(letterMiddle.Id);
+
+        // Page 2: pass before = middle letter's SentAtUtc
+        var page2 = await service.GetIncomingMailboxAsync(recipient.Id, before: letterMiddle.SentAtUtc, limit: 2);
+        page2.Should().HaveCount(1);
+        ((IncomingInTransitLetterDto)page2[0]).Id.Should().Be(letterOldest.Id);
+    }
 }

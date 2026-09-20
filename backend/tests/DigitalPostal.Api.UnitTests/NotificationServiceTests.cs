@@ -122,4 +122,59 @@ public class NotificationServiceTests
         var resultStranger = await service.MarkAsReadAsync(notification.Id, strangerId);
         resultStranger.Should().Be(MarkNotificationResult.NotFound);
     }
+
+    [Fact]
+    public async Task GetUserNotifications_CursorPagination_ReturnsOlderNotifications()
+    {
+        using var db = CreateInMemoryDbContext();
+        var userId = Guid.NewGuid();
+        var now = DateTimeOffset.UtcNow;
+
+        var nNewest = new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            LetterId = Guid.NewGuid(),
+            Type = NotificationType.LETTER_IN_TRANSIT,
+            Title = "Notification 1 (newest)",
+            Body = "Body 1",
+            CreatedAtUtc = now.AddMinutes(-5)
+        };
+        var nMiddle = new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            LetterId = Guid.NewGuid(),
+            Type = NotificationType.LETTER_IN_TRANSIT,
+            Title = "Notification 2 (middle)",
+            Body = "Body 2",
+            CreatedAtUtc = now.AddMinutes(-15)
+        };
+        var nOldest = new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            LetterId = Guid.NewGuid(),
+            Type = NotificationType.LETTER_IN_TRANSIT,
+            Title = "Notification 3 (oldest)",
+            Body = "Body 3",
+            CreatedAtUtc = now.AddMinutes(-30)
+        };
+
+        db.Notifications.AddRange(nNewest, nMiddle, nOldest);
+        await db.SaveChangesAsync();
+
+        var service = new NotificationService(db);
+
+        // Page 1: limit 2
+        var page1 = await service.GetUserNotificationsAsync(userId, unreadOnly: null, before: null, limit: 2);
+        page1.Should().HaveCount(2);
+        page1[0].Id.Should().Be(nNewest.Id);
+        page1[1].Id.Should().Be(nMiddle.Id);
+
+        // Page 2: pass before = middle notification's CreatedAtUtc
+        var page2 = await service.GetUserNotificationsAsync(userId, unreadOnly: null, before: nMiddle.CreatedAtUtc, limit: 2);
+        page2.Should().HaveCount(1);
+        page2[0].Id.Should().Be(nOldest.Id);
+    }
 }

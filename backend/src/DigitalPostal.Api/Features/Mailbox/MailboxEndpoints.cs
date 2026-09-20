@@ -13,6 +13,7 @@ public static class MailboxEndpoints
 
         // GET /api/v1/mailbox/incoming
         mailbox.MapGet("/incoming", async (
+            DateTimeOffset? before,
             int? limit,
             ClaimsPrincipal principal,
             MailboxService mailboxService,
@@ -21,11 +22,11 @@ public static class MailboxEndpoints
             var userId = GetUserId(principal);
             if (userId == null) return Results.Unauthorized();
 
-            var items = await mailboxService.GetIncomingMailboxAsync(userId.Value, limit ?? 20, ct);
+            var items = await mailboxService.GetIncomingMailboxAsync(userId.Value, before, limit ?? 20, ct);
             return Results.Ok(items);
         })
         .WithName("GetIncomingMailbox")
-        .WithSummary("List incoming letters for the authenticated recipient");
+        .WithSummary("List incoming letters for the authenticated recipient (supports cursor pagination via before)");
 
         // GET /api/v1/mailbox/incoming/{id}
         mailbox.MapGet("/incoming/{id:guid}", async (
@@ -52,6 +53,7 @@ public static class MailboxEndpoints
 
         // GET /api/v1/mailbox/sent
         mailbox.MapGet("/sent", async (
+            DateTimeOffset? before,
             int? limit,
             ClaimsPrincipal principal,
             MailboxService mailboxService,
@@ -60,11 +62,11 @@ public static class MailboxEndpoints
             var userId = GetUserId(principal);
             if (userId == null) return Results.Unauthorized();
 
-            var items = await mailboxService.GetSentMailboxAsync(userId.Value, limit ?? 20, ct);
+            var items = await mailboxService.GetSentMailboxAsync(userId.Value, before, limit ?? 20, ct);
             return Results.Ok(items);
         })
         .WithName("GetSentMailbox")
-        .WithSummary("List letters sent by the authenticated user");
+        .WithSummary("List letters sent by the authenticated user (supports cursor pagination via before)");
 
         // GET /api/v1/mailbox/sent/{id}
         mailbox.MapGet("/sent/{id:guid}", async (

@@ -2,20 +2,19 @@
 
 import React, { useEffect, useState } from "react";
 import {
-  ArrowRight,
   CheckCircle,
-  Clock,
-  EnvelopeOpen,
   EnvelopeSimple,
-  HourglassMedium,
-  LockKey,
-  MapPin,
-  PaperPlaneTilt,
   X,
 } from "@phosphor-icons/react";
 import StampPreview from "@/components/StampPreview";
 import apiClient from "@/lib/api";
-import type { IncomingLetter, JourneyEvent, SentLetter } from "@/types";
+import type {
+  DeliveredIncomingLetter,
+  IncomingInTransitLetter,
+  IncomingLetter,
+  JourneyEvent,
+  SentLetter,
+} from "@/types";
 
 interface LetterReaderModalProps {
   letter: IncomingLetter | SentLetter | null;
@@ -32,24 +31,43 @@ export default function LetterReaderModal({
   const [loadingJourney, setLoadingJourney] = useState(false);
 
   useEffect(() => {
-    if (!letter) {
-      setJourney([]);
+    let active = true;
+
+    if (!letter || (type === "incoming" && letter.status === "IN_TRANSIT")) {
       return;
     }
 
-    // In-transit incoming letters cannot view journey per privacy rules (API returns 404)
-    if (type === "incoming" && letter.status === "IN_TRANSIT") {
-      setJourney([]);
-      return;
-    }
+    void Promise.resolve().then(async () => {
+      if (!active) return;
+      setLoadingJourney(true);
+      try {
+        const res = await apiClient.get<{ letterId: string; events: JourneyEvent[] }>(
+          `/letters/${letter.id}/journey`
+        );
+        if (active) setJourney(res.data.events || []);
+      } catch {
+        if (active) setJourney([]);
+      } finally {
+        if (active) setLoadingJourney(false);
+      }
+    });
 
-    setLoadingJourney(true);
-    apiClient
-      .get<{ letterId: string; events: JourneyEvent[] }>(`/letters/${letter.id}/journey`)
-      .then((res) => setJourney(res.data.events || []))
-      .catch(() => setJourney([]))
-      .finally(() => setLoadingJourney(false));
+    return () => {
+      active = false;
+      setJourney([]);
+    };
   }, [letter, type]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("modal-open"));
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("modal-close"));
+      }
+    };
+  }, []);
 
   if (!letter) return null;
 
@@ -57,15 +75,15 @@ export default function LetterReaderModal({
   const isDeliveredIncoming = type === "incoming" && letter.status === "DELIVERED";
   const isSent = type === "sent";
 
-  const inTransit = isInTransitIncoming ? (letter as any) : null;
-  const delivered = isDeliveredIncoming ? (letter as any) : null;
+  const inTransit = isInTransitIncoming ? (letter as IncomingInTransitLetter) : null;
+  const delivered = isDeliveredIncoming ? (letter as DeliveredIncomingLetter) : null;
   const sent = isSent ? (letter as SentLetter) : null;
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[#151515]/60 backdrop-blur-xs overflow-y-auto animate-fadeIn"
+      className="fixed inset-0 z-[1100] flex items-center justify-center p-4 sm:p-6 bg-[#151515]/60 backdrop-blur-xs overflow-y-auto animate-fadeIn"
       onClick={onClose}
     >
       <div
@@ -168,13 +186,13 @@ export default function LetterReaderModal({
 
                 <div className="pt-2 font-mono text-[11px] text-[#6a6a64] flex flex-wrap gap-x-4 gap-y-1">
                   <span>
-                    Sent: {new Date(sent?.sentAtUtc || delivered?.sentAtUtc || (letter as any).sentAtUtc || Date.now()).toLocaleDateString([], { dateStyle: "medium" })}
+                    Sent: {new Date(sent?.sentAtUtc || delivered?.sentAtUtc || letter.estimatedDeliveryAtUtc).toLocaleDateString([], { dateStyle: "medium" })}
                   </span>
                   <span>·</span>
                   <span>
                     {letter.status === "DELIVERED"
                       ? `Delivered: ${new Date(
-                          (letter as any).deliveredAtUtc || letter.estimatedDeliveryAtUtc
+                          delivered?.deliveredAtUtc || sent?.deliveredAtUtc || letter.estimatedDeliveryAtUtc
                         ).toLocaleDateString([], { dateStyle: "medium" })}`
                       : `Arrival: ${new Date(letter.estimatedDeliveryAtUtc).toLocaleDateString([], { dateStyle: "medium" })}`}
                   </span>
@@ -186,6 +204,7 @@ export default function LetterReaderModal({
                 <StampPreview
                   from={delivered ? delivered.origin?.city : "Your Desk"}
                   to={delivered ? delivered.destination?.city : sent?.destination?.city}
+                  seed={letter.id}
                   compact
                 />
               </div>
@@ -194,7 +213,7 @@ export default function LetterReaderModal({
             {/* Letter Content Area with tactile parchment styling */}
             <div className="bg-[#fafaf9] border border-[#e5e5e0] rounded-xl p-6 sm:p-8 min-h-48">
               <p className="font-serif text-base sm:text-lg text-[#151515] leading-relaxed whitespace-pre-wrap">
-                {(letter as any).content || "No message content."}
+                {delivered?.content || sent?.content || "No message content."}
               </p>
             </div>
 

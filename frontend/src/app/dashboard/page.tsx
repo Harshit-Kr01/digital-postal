@@ -1,51 +1,59 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowClockwise,
   ArrowUpRight,
+  CaretDown,
   CheckCircle,
-  Compass,
   EnvelopeOpen,
   EnvelopeSimple,
-  HourglassMedium,
   LockKey,
-  MapPin,
   PaperPlaneTilt,
 } from "@phosphor-icons/react";
 import AppShell from "@/components/AppShell";
-import StampPreview from "@/components/StampPreview";
 import LetterReaderModal from "@/components/LetterReaderModal";
 import { useAuth } from "@/context/AuthContext";
 import apiClient, { getErrorMessage } from "@/lib/api";
-import type { IncomingLetter, PagedResult, SentLetter } from "@/types";
+import type { DeliveredIncomingLetter, IncomingLetter, PagedResult, SentLetter } from "@/types";
 
-export default function DashboardPage() {
+function MailboxDashboardContent() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const letterIdParam = searchParams.get("letterId");
+
   const [activeTab, setActiveTab] = useState<"inbox" | "outbox">("inbox");
   const [inboxLetters, setInboxLetters] = useState<IncomingLetter[]>([]);
+  const [inboxCursor, setInboxCursor] = useState<string | null>(null);
+  const [inboxHasMore, setInboxHasMore] = useState(false);
+  const [loadingMoreInbox, setLoadingMoreInbox] = useState(false);
+
   const [outboxLetters, setOutboxLetters] = useState<SentLetter[]>([]);
+  const [outboxCursor, setOutboxCursor] = useState<string | null>(null);
+  const [outboxHasMore, setOutboxHasMore] = useState(false);
+  const [loadingMoreOutbox, setLoadingMoreOutbox] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedLetter, setSelectedLetter] = useState<IncomingLetter | SentLetter | null>(null);
   const [selectedType, setSelectedType] = useState<"incoming" | "sent">("incoming");
 
+  const lastOpenedLetterIdRef = useRef<string | null>(null);
+
   const city = user?.location?.city || "New Delhi";
   const country = user?.location?.country || "India";
   const firstName = user?.displayName ? user.displayName.split(" ")[0] : "Friend";
-  const [greeting, setGreeting] = useState("Good day");
-
-  useEffect(() => {
+  const [greeting] = useState(() => {
+    if (typeof window === "undefined") return "Good day";
     const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) {
-      setGreeting("Good morning");
-    } else if (hour >= 12 && hour < 18) {
-      setGreeting("Good afternoon");
-    } else {
-      setGreeting("Good evening");
-    }
-  }, []);
+    if (hour >= 5 && hour < 12) return "Good morning";
+    if (hour >= 12 && hour < 18) return "Good afternoon";
+    return "Good evening";
+  });
+
+  const PAGE_SIZE = 5;
 
   async function loadMailbox(isManual = false) {
     if (isManual) setRefreshing(true);
@@ -53,12 +61,17 @@ export default function DashboardPage() {
 
     try {
       const [inboxRes, outboxRes] = await Promise.all([
-        apiClient.get<PagedResult<IncomingLetter>>("/mailbox/incoming"),
-        apiClient.get<PagedResult<SentLetter>>("/mailbox/sent"),
+        apiClient.get<PagedResult<IncomingLetter>>("/mailbox/incoming", { params: { limit: PAGE_SIZE } }),
+        apiClient.get<PagedResult<SentLetter>>("/mailbox/sent", { params: { limit: PAGE_SIZE } }),
       ]);
 
       setInboxLetters(inboxRes.data.items || []);
+      setInboxCursor(inboxRes.data.nextCursor || null);
+      setInboxHasMore(Boolean(inboxRes.data.hasMore));
+
       setOutboxLetters(outboxRes.data.items || []);
+      setOutboxCursor(outboxRes.data.nextCursor || null);
+      setOutboxHasMore(Boolean(outboxRes.data.hasMore));
     } catch (err) {
       console.error("Failed to load mailbox:", getErrorMessage(err));
     } finally {
@@ -68,10 +81,158 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    if (user) {
-      loadMailbox();
-    }
+    if (!user) return;
+    let active = true;
+
+    void Promise.resolve().then(async () => {
+      try {
+        const [inboxRes, outboxRes] = await Promise.all([
+          apiClient.get<PagedResult<IncomingLetter>>("/mailbox/incoming", { params: { limit: PAGE_SIZE } }),
+          apiClient.get<PagedResult<SentLetter>>("/mailbox/sent", { params: { limit: PAGE_SIZE } }),
+        ]);
+        if (!active) return;
+        setInboxLetters(inboxRes.data.items || []);
+        setInboxCursor(inboxRes.data.nextCursor || null);
+        setInboxHasMore(Boolean(inboxRes.data.hasMore));
+
+        setOutboxLetters(outboxRes.data.items || []);
+        setOutboxCursor(outboxRes.data.nextCursor || null);
+        setOutboxHasMore(Boolean(outboxRes.data.hasMore));
+      } catch (err) {
+        console.error("Failed to load mailbox:", getErrorMessage(err));
+      } finally {
+        if (active) setLoading(false);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
   }, [user]);
+
+  async function loadMoreInbox() {
+    if (!inboxCursor || loadingMoreInbox) return;
+    setLoadingMoreInbox(true);
+    try {
+      const res = await apiClient.get<PagedResult<IncomingLetter>>("/mailbox/incoming", {
+        params: { cursor: inboxCursor, limit: PAGE_SIZE },
+      });
+      const newItems = res.data.items || [];
+      setInboxLetters((prev) => {
+        const existingIds = new Set(prev.map((i) => i.id));
+        const filtered = newItems.filter((i) => !existingIds.has(i.id));
+        return [...prev, ...filtered];
+      });
+      setInboxCursor(res.data.nextCursor || null);
+      setInboxHasMore(Boolean(res.data.hasMore));
+    } catch (err) {
+      console.error("Failed to load more incoming letters:", getErrorMessage(err));
+    } finally {
+      setLoadingMoreInbox(false);
+    }
+  }
+
+  async function loadMoreOutbox() {
+    if (!outboxCursor || loadingMoreOutbox) return;
+    setLoadingMoreOutbox(true);
+    try {
+      const res = await apiClient.get<PagedResult<SentLetter>>("/mailbox/sent", {
+        params: { cursor: outboxCursor, limit: PAGE_SIZE },
+      });
+      const newItems = res.data.items || [];
+      setOutboxLetters((prev) => {
+        const existingIds = new Set(prev.map((i) => i.id));
+        const filtered = newItems.filter((i) => !existingIds.has(i.id));
+        return [...prev, ...filtered];
+      });
+      setOutboxCursor(res.data.nextCursor || null);
+      setOutboxHasMore(Boolean(res.data.hasMore));
+    } catch (err) {
+      console.error("Failed to load more dispatched letters:", getErrorMessage(err));
+    } finally {
+      setLoadingMoreOutbox(false);
+    }
+  }
+
+  // Handle opening letter by ID (from notification click or URL query parameter)
+  const openLetterById = useCallback(
+    async (letterId: string) => {
+      if (!letterId) return;
+
+      // 1. Check if already present in incoming mailbox
+      const foundInbox = inboxLetters.find((l) => l.id === letterId);
+      if (foundInbox) {
+        setSelectedLetter(foundInbox);
+        setSelectedType("incoming");
+        setActiveTab("inbox");
+        lastOpenedLetterIdRef.current = letterId;
+        return;
+      }
+
+      // 2. Check if already present in sent mailbox
+      const foundOutbox = outboxLetters.find((l) => l.id === letterId);
+      if (foundOutbox) {
+        setSelectedLetter(foundOutbox);
+        setSelectedType("sent");
+        setActiveTab("outbox");
+        lastOpenedLetterIdRef.current = letterId;
+        return;
+      }
+
+      // 3. Not in memory: fetch directly from API
+      try {
+        const incomingRes = await apiClient.get<IncomingLetter>(`/mailbox/incoming/${letterId}`);
+        if (incomingRes.data) {
+          setSelectedLetter(incomingRes.data);
+          setSelectedType("incoming");
+          setActiveTab("inbox");
+          lastOpenedLetterIdRef.current = letterId;
+          return;
+        }
+      } catch {
+        // If incoming returns 404, user might be the sender of the letter
+        try {
+          const sentRes = await apiClient.get<SentLetter>(`/mailbox/sent/${letterId}`);
+          if (sentRes.data) {
+            setSelectedLetter(sentRes.data);
+            setSelectedType("sent");
+            setActiveTab("outbox");
+            lastOpenedLetterIdRef.current = letterId;
+          }
+        } catch (sentErr) {
+          console.error("Unable to find letter for ID:", letterId, sentErr);
+        }
+      }
+    },
+    [inboxLetters, outboxLetters]
+  );
+
+  // Sync with ?letterId= query param
+  useEffect(() => {
+    if (letterIdParam && letterIdParam !== lastOpenedLetterIdRef.current) {
+      openLetterById(letterIdParam);
+    }
+  }, [letterIdParam, openLetterById]);
+
+  // Listen for 'open-letter' event emitted from NotificationsPopover
+  useEffect(() => {
+    const handleOpenLetter = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      if (id) {
+        openLetterById(id);
+      }
+    };
+    window.addEventListener("open-letter", handleOpenLetter);
+    return () => window.removeEventListener("open-letter", handleOpenLetter);
+  }, [openLetterById]);
+
+  const handleCloseModal = () => {
+    setSelectedLetter(null);
+    lastOpenedLetterIdRef.current = null;
+    if (typeof window !== "undefined" && window.location.search.includes("letterId")) {
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  };
 
   const inTransitCount =
     inboxLetters.filter((l) => l.status === "IN_TRANSIT").length +
@@ -134,6 +295,7 @@ export default function DashboardPage() {
               <span>Inbox</span>
               <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#e5e5e0] text-[#151515]">
                 {inboxLetters.length}
+                {inboxHasMore ? "+" : ""}
               </span>
             </button>
             <button
@@ -148,6 +310,7 @@ export default function DashboardPage() {
               <span>Dispatched</span>
               <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[#e5e5e0] text-[#151515]">
                 {outboxLetters.length}
+                {outboxHasMore ? "+" : ""}
               </span>
             </button>
           </div>
@@ -179,7 +342,7 @@ export default function DashboardPage() {
               <div className="mt-6 flex flex-col gap-3">
                 {inboxLetters.map((letter) => {
                   const isInTransit = letter.status === "IN_TRANSIT";
-                  const delivered = !isInTransit ? (letter as any) : null;
+                  const delivered = letter.status === "DELIVERED" ? (letter as DeliveredIncomingLetter) : null;
 
                   return (
                     <div
@@ -221,13 +384,13 @@ export default function DashboardPage() {
                           <p className="font-mono text-xs text-[#6a6a64] mt-0.5">
                             {isInTransit ? (
                               <>
-                                Expected: <strong className="text-[#151515]">{(letter as any).displayEstimate}</strong>
+                                Expected: <strong className="text-[#151515]">{letter.displayEstimate}</strong>
                               </>
                             ) : (
                               <>
                                 From @{delivered?.sender?.username} ({delivered?.origin?.city}, {delivered?.origin?.country}) · Delivered{" "}
                                 {new Date(delivered?.deliveredAtUtc || letter.estimatedDeliveryAtUtc).toLocaleDateString([], {
-                                  dateStyle: "medium",
+                                   dateStyle: "medium",
                                 })}
                               </>
                             )}
@@ -251,6 +414,36 @@ export default function DashboardPage() {
                     </div>
                   );
                 })}
+
+                {/* Inbox Pagination Controls */}
+                {inboxHasMore ? (
+                  <div className="pt-3 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={loadMoreInbox}
+                      disabled={loadingMoreInbox}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#e5e5e0] hover:border-[#151515] bg-[#ffffff] hover:bg-[#fafaf9] text-[#151515] font-mono text-[11px] font-semibold uppercase tracking-wider transition-all cursor-pointer active:scale-95 disabled:opacity-50 shadow-2xs"
+                    >
+                      {loadingMoreInbox ? (
+                        <>
+                          <ArrowClockwise size={12} className="animate-spin" weight="bold" />
+                          <span>Loading earlier...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CaretDown size={12} weight="bold" />
+                          <span>Load earlier</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : inboxLetters.length > 0 ? (
+                  <div className="py-4 text-center">
+                    <span className="font-mono text-[10px] text-[#9e9e97] uppercase tracking-wider">
+                      — End of postal records —
+                    </span>
+                  </div>
+                ) : null}
               </div>
             )
           ) : outboxLetters.length === 0 ? (
@@ -339,6 +532,36 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
+
+              {/* Dispatched Pagination Controls */}
+              {outboxHasMore ? (
+                <div className="pt-3 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={loadMoreOutbox}
+                    disabled={loadingMoreOutbox}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#e5e5e0] hover:border-[#151515] bg-[#ffffff] hover:bg-[#fafaf9] text-[#151515] font-mono text-[11px] font-semibold uppercase tracking-wider transition-all cursor-pointer active:scale-95 disabled:opacity-50 shadow-2xs"
+                  >
+                    {loadingMoreOutbox ? (
+                      <>
+                        <ArrowClockwise size={12} className="animate-spin" weight="bold" />
+                        <span>Loading earlier...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CaretDown size={12} weight="bold" />
+                        <span>Load earlier</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : outboxLetters.length > 0 ? (
+                <div className="py-4 text-center">
+                  <span className="font-mono text-[10px] text-[#9e9e97] uppercase tracking-wider">
+                    — End of dispatched records —
+                  </span>
+                </div>
+              ) : null}
             </div>
           )}
         </section>
@@ -385,9 +608,27 @@ export default function DashboardPage() {
         <LetterReaderModal
           letter={selectedLetter}
           type={selectedType}
-          onClose={() => setSelectedLetter(null)}
+          onClose={handleCloseModal}
         />
       )}
     </AppShell>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <div className="py-20 text-center">
+            <p className="font-mono text-xs uppercase tracking-wider text-[#6a6a64]">
+              Opening postal records...
+            </p>
+          </div>
+        </AppShell>
+      }
+    >
+      <MailboxDashboardContent />
+    </Suspense>
   );
 }

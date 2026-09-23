@@ -1,7 +1,6 @@
 "use client";
 
 import React, { FormEvent, useEffect, useState } from "react";
-import { ArrowUpRight, Compass, MapPin, Sparkle } from "@phosphor-icons/react";
 import AppShell from "@/components/AppShell";
 import StampPreview from "@/components/StampPreview";
 import apiClient, { getErrorMessage } from "@/lib/api";

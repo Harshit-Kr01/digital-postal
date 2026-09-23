@@ -1,12 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  ArrowUpRight,
   Bell,
-  EnvelopeSimple,
   PaperPlaneTilt,
   SignOut,
   SlidersHorizontal,
@@ -20,6 +18,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, isLoading, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [dockHiddenByModal, setDockHiddenByModal] = useState(false);
+  const [dockHiddenByScroll, setDockHiddenByScroll] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
     const handleCount = (e: Event) => {
@@ -29,6 +31,43 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("notifications-count", handleCount);
     return () => window.removeEventListener("notifications-count", handleCount);
   }, []);
+
+  // Track notifications popover / modal state
+  useEffect(() => {
+    const handleModalOpen = () => {
+      setDockHiddenByModal(true);
+      setIsNotificationsOpen(true);
+    };
+    const handleModalClose = () => {
+      setDockHiddenByModal(false);
+      setIsNotificationsOpen(false);
+    };
+
+    window.addEventListener("modal-open", handleModalOpen);
+    window.addEventListener("modal-close", handleModalClose);
+    return () => {
+      window.removeEventListener("modal-open", handleModalOpen);
+      window.removeEventListener("modal-close", handleModalClose);
+    };
+  }, []);
+
+  // Smart auto-hide floating dock when scrolling down on mobile, reveal when scrolling up
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+      if (currentY > lastScrollY.current && currentY > 60) {
+        setDockHiddenByScroll(true);
+      } else if (currentY < lastScrollY.current - 8 || currentY <= 20) {
+        setDockHiddenByScroll(false);
+      }
+      lastScrollY.current = currentY;
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const isDockVisible = !dockHiddenByModal && !dockHiddenByScroll;
 
   if (isLoading) {
     return (
@@ -111,8 +150,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="studio-main flex-1 flex flex-col">
+      {/* Main Content Area with bottom clearance for mobile dock */}
+      <main className="studio-main flex-1 flex flex-col pb-28 md:pb-0">
         {children}
       </main>
 
@@ -123,7 +162,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </footer>
 
       {/* Revamped Borderless Mobile Floating Navigation Dock */}
-      <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[800] md:hidden w-auto max-w-[calc(100vw-32px)] pointer-events-auto" aria-label="Mobile Navigation">
+      <div
+        className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-[800] md:hidden w-auto max-w-[calc(100vw-32px)] transition-all duration-300 ease-out ${
+          isDockVisible
+            ? "translate-y-0 opacity-100 pointer-events-auto"
+            : "translate-y-24 opacity-0 pointer-events-none"
+        }`}
+        aria-label="Mobile Navigation"
+      >
         <nav className="flex items-center gap-1 sm:gap-2 px-2.5 py-1.5 bg-[#ffffff]/92 backdrop-blur-xl border border-[#e5e5e0] rounded-full shadow-[0_12px_32px_-4px_rgba(21,21,21,0.14),0_2px_8px_rgba(21,21,21,0.04)]">
           {/* Mailbox / Overview */}
           <Link
@@ -161,13 +207,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 window.dispatchEvent(new CustomEvent("open-notifications"));
               }
             }}
-            className="flex flex-col items-center justify-center py-1.5 px-3 min-w-[56px] rounded-full transition-all select-none touch-manipulation relative text-[#8e8e86] hover:text-[#151515] active:scale-95 cursor-pointer"
+            className={`flex flex-col items-center justify-center py-1.5 px-3 min-w-[56px] rounded-full transition-all select-none touch-manipulation relative active:scale-95 cursor-pointer ${
+              isNotificationsOpen
+                ? "text-[#151515] font-semibold bg-[#f0f0ea]"
+                : unreadCount > 0
+                ? "text-[#ff5a1f] font-semibold"
+                : "text-[#151515] hover:text-[#ff5a1f]"
+            }`}
             aria-label="Alerts"
           >
             <div className="relative">
-              <Bell size={20} weight={unreadCount > 0 ? "fill" : "bold"} />
+              <Bell
+                size={20}
+                weight={isNotificationsOpen || unreadCount > 0 ? "fill" : "bold"}
+                className={unreadCount > 0 ? "text-[#ff5a1f]" : "text-[#151515]"}
+              />
               {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#ff5a1f] ring-2 ring-[#ffffff]" />
+                <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[#ff5a1f] ring-2 ring-[#ffffff] animate-pulse" />
               )}
             </div>
             <span className="font-mono text-[9px] uppercase tracking-wider mt-0.5">Alerts</span>

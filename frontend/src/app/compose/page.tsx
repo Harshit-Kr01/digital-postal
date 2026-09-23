@@ -1,8 +1,9 @@
 "use client";
 
-import React, { FormEvent, useState } from "react";
+import React, { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  ArrowClockwise,
   ArrowRight,
   Check,
   MagnifyingGlass,
@@ -20,11 +21,14 @@ export default function ComposePage() {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<RecipientSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [recipient, setRecipient] = useState<RecipientSearchResult | null>(null);
   const [content, setContent] = useState("");
   const [error, setError] = useState("");
   const [sent, setSent] = useState<SendLetterResponse | null>(null);
   const [busy, setBusy] = useState(false);
+  const [stampSeed, setStampSeed] = useState(() => Math.random().toString(36).slice(2));
 
   const fromCity = user?.location?.city || "Your Desk";
   const toCity = recipient?.locationCity || "Recipient";
@@ -41,23 +45,53 @@ export default function ComposePage() {
   );
   const distanceKm = estimate?.distanceKm;
 
-  async function search(value: string) {
-    setQuery(value);
+  const handleQueryChange = (val: string) => {
+    setQuery(val);
     setRecipient(null);
-    if (value.trim().length < 2) {
+    setError("");
+    if (val.trim().length < 2) {
       setMatches([]);
+      setSearching(false);
+      setHasSearched(false);
+    }
+  };
+
+  // Debounced recipient search (300ms delay to prevent pinging backend on every keystroke)
+  useEffect(() => {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) {
       return;
     }
-    try {
-      const response = await apiClient.get<RecipientSearchResult[]>(
-        "/users/search",
-        { params: { q: value } }
-      );
-      setMatches(response.data);
-    } catch (reason) {
-      setError(getErrorMessage(reason));
-    }
-  }
+
+    let active = true;
+
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const response = await apiClient.get<RecipientSearchResult[]>(
+          "/users/search",
+          { params: { q: trimmed } }
+        );
+        if (active) {
+          setMatches(response.data || []);
+          setHasSearched(true);
+        }
+      } catch (reason) {
+        if (active) {
+          setError(getErrorMessage(reason));
+        }
+      } finally {
+        if (active) {
+          setSearching(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [query]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -117,6 +151,7 @@ export default function ComposePage() {
                     setContent("");
                     setRecipient(null);
                     setQuery("");
+                    setStampSeed(Math.random().toString(36).slice(2));
                   }}
                   className="header-action-btn"
                 >
@@ -180,13 +215,20 @@ export default function ComposePage() {
                       <input
                         type="text"
                         value={query}
-                        onChange={(e) => search(e.target.value)}
+                        onChange={(e) => handleQueryChange(e.target.value)}
                         placeholder="Search recipient by username..."
-                        className="w-full bg-[#f8f8f5] border border-[#e5e5e0] focus:border-[#151515] rounded-xl py-2.5 pl-9 pr-4 text-sm outline-none transition-colors"
+                        className="w-full bg-[#f8f8f5] border border-[#e5e5e0] focus:border-[#151515] rounded-xl py-2.5 pl-9 pr-9 text-sm outline-none transition-colors"
                       />
+                      {searching && (
+                        <ArrowClockwise
+                          size={15}
+                          className="absolute right-3 animate-spin text-[#ff5a1f]"
+                          weight="bold"
+                        />
+                      )}
                     </div>
 
-                    {matches.length > 0 && (
+                    {matches.length > 0 ? (
                       <div className="absolute top-full left-0 right-0 mt-1.5 bg-[#ffffff] border border-[#151515] rounded-xl shadow-lg z-20 max-h-52 overflow-y-auto">
                         {matches.map((match) => (
                           <button
@@ -195,8 +237,9 @@ export default function ComposePage() {
                             onClick={() => {
                               setRecipient(match);
                               setMatches([]);
+                              setQuery("");
                             }}
-                            className="w-full text-left p-3 hover:bg-[#f8f8f5] border-b border-[#e5e5e0] last:border-0 transition-colors flex items-center justify-between"
+                            className="w-full text-left p-3 hover:bg-[#f8f8f5] border-b border-[#e5e5e0] last:border-0 transition-colors flex items-center justify-between cursor-pointer"
                           >
                             <div>
                               <p className="text-xs font-semibold text-[#151515]">{match.displayName}</p>
@@ -208,7 +251,13 @@ export default function ComposePage() {
                           </button>
                         ))}
                       </div>
-                    )}
+                    ) : hasSearched && !searching && query.trim().length >= 2 ? (
+                      <div className="absolute top-full left-0 right-0 mt-1.5 bg-[#ffffff] border border-[#e5e5e0] rounded-xl shadow-md z-20 p-3 text-center">
+                        <p className="font-mono text-xs text-[#6a6a64]">
+                          No correspondents found for &ldquo;{query.trim()}&rdquo;
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -219,6 +268,7 @@ export default function ComposePage() {
                   from={fromCity}
                   to={recipient ? toCity : undefined}
                   distanceKm={distanceKm}
+                  seed={stampSeed}
                   compact
                 />
                 {!recipient && (

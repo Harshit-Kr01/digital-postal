@@ -17,8 +17,12 @@ export default function NotificationsPopover() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const NOTIFICATION_PAGE_SIZE = 7;
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -26,10 +30,12 @@ export default function NotificationsPopover() {
       const res = await apiClient.get<PagedResult<AppNotification>>("/notifications", {
         params: {
           unreadOnly: unreadOnly ? true : undefined,
-          limit: 20,
+          limit: NOTIFICATION_PAGE_SIZE,
         },
       });
       setNotifications(res.data.items || []);
+      setNextCursor(res.data.nextCursor || null);
+      setHasMore(Boolean(res.data.hasMore));
     } catch {
       // Gracefully handle network error
     } finally {
@@ -37,15 +43,50 @@ export default function NotificationsPopover() {
     }
   }, [unreadOnly]);
 
+  const loadMoreNotifications = async () => {
+    if (!nextCursor || loadingMore) return;
+    try {
+      setLoadingMore(true);
+      const res = await apiClient.get<PagedResult<AppNotification>>("/notifications", {
+        params: {
+          unreadOnly: unreadOnly ? true : undefined,
+          cursor: nextCursor,
+          limit: NOTIFICATION_PAGE_SIZE,
+        },
+      });
+      const newItems = res.data.items || [];
+      setNotifications((prev) => {
+        const existingIds = new Set(prev.map((n) => n.id));
+        const filtered = newItems.filter((n) => !existingIds.has(n.id));
+        return [...prev, ...filtered];
+      });
+      setNextCursor(res.data.nextCursor || null);
+      setHasMore(Boolean(res.data.hasMore));
+    } catch {
+      // Gracefully handle network error
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   // Initial load and periodic polling every 45s
   useEffect(() => {
-    fetchNotifications();
+    let mounted = true;
+
+    void Promise.resolve().then(() => {
+      if (mounted) {
+        fetchNotifications();
+      }
+    });
 
     const interval = setInterval(() => {
       fetchNotifications();
     }, 45000);
 
-    return () => clearInterval(interval);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, [fetchNotifications]);
 
   // Listen for open-notifications event (from mobile dock or elsewhere)
@@ -57,6 +98,22 @@ export default function NotificationsPopover() {
     window.addEventListener("open-notifications", handleOpen);
     return () => window.removeEventListener("open-notifications", handleOpen);
   }, [fetchNotifications]);
+
+  // Notify parent shell to hide floating dock when notifications popover is open
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (isOpen) {
+        window.dispatchEvent(new CustomEvent("modal-open"));
+      } else {
+        window.dispatchEvent(new CustomEvent("modal-close"));
+      }
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("modal-close"));
+      }
+    };
+  }, [isOpen]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -103,18 +160,19 @@ export default function NotificationsPopover() {
     setIsOpen(false);
     if (notif.letterId) {
       router.push(`/dashboard?letterId=${notif.letterId}`);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("open-letter", { detail: notif.letterId })
+        );
+      }
+    } else {
+      router.push("/dashboard");
     }
   };
 
   const formatTimestamp = (utcStr: string) => {
     const d = new Date(utcStr);
-    const diffMs = Date.now() - d.getTime();
-    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    if (diffMinutes < 1) return "Just now";
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return d.toLocaleDateString([], { month: "short", day: "numeric" });
+    return `${d.toLocaleDateString([], { month: "short", day: "numeric" })} · ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
   };
 
   const getIcon = (type: string) => {
@@ -130,7 +188,7 @@ export default function NotificationsPopover() {
 
   return (
     <div className="relative" ref={popoverRef}>
-      {/* Desktop Bell Trigger Button (hidden on mobile; mobile dock handles Alerts) */}
+      {/* Notifications Trigger Button */}
       <button
         type="button"
         onClick={() => {
@@ -138,13 +196,21 @@ export default function NotificationsPopover() {
           setIsOpen(next);
           if (next) fetchNotifications();
         }}
-        className="hidden md:flex relative w-8 h-8 rounded-full border border-[#e5e5e0] hover:border-[#151515] active:bg-[#e5e5e0] items-center justify-center text-[#151515] hover:bg-[#f0f0ea] transition-all cursor-pointer shrink-0 select-none touch-manipulation"
+        className={`flex relative w-8 h-8 rounded-full border items-center justify-center transition-all cursor-pointer shrink-0 select-none touch-manipulation shadow-2xs ${
+          isOpen
+            ? "border-[#151515] bg-[#151515] text-[#ffffff]"
+            : "border-[#151515]/30 bg-[#ffffff] text-[#151515] hover:border-[#151515] hover:bg-[#f0f0ea] active:bg-[#e5e5e0]"
+        }`}
         aria-label="Notifications"
         title="Notifications"
       >
-        <Bell size={16} weight={unreadCount > 0 ? "fill" : "bold"} />
-        {unreadCount > 0 && (
-          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-[#ff5a1f] ring-2 ring-[#ffffff]" />
+        <Bell
+          size={16}
+          weight={isOpen || unreadCount > 0 ? "fill" : "bold"}
+          className={isOpen ? "text-[#ffffff]" : unreadCount > 0 ? "text-[#ff5a1f]" : "text-[#151515]"}
+        />
+        {unreadCount > 0 && !isOpen && (
+          <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-[#ff5a1f] ring-2 ring-[#ffffff] animate-pulse" />
         )}
       </button>
 
@@ -283,6 +349,19 @@ export default function NotificationsPopover() {
                     )}
                   </div>
                 ))
+              )}
+
+              {hasMore && (
+                <div className="p-3 text-center bg-[#fafaf9] border-t border-[#e5e5e0]">
+                  <button
+                    type="button"
+                    onClick={loadMoreNotifications}
+                    disabled={loadingMore}
+                    className="font-mono text-xs text-[#6a6a64] hover:text-[#151515] active:text-[#ff5a1f] font-semibold py-1.5 px-3 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {loadingMore ? "Loading older alerts..." : "Load earlier alerts ↓"}
+                  </button>
+                </div>
               )}
             </div>
           </div>

@@ -6,6 +6,12 @@ export const metadata: Metadata = {
   title: "Digital Postal — Slow & Intentional Messaging",
   description:
     "Digital letters that travel across real distance and time with postal simulation.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "32x32" },
+    ],
+  },
 };
 
 export default function RootLayout({
